@@ -36,11 +36,10 @@ Detalles:
 
 - `santiago_bernabeu.glb`: el estadio. La página lo escala sola (el césped a su tamaño real),
   encuentra la boca del túnel de vestuarios y construye el pasillo detrás.
-- **Manuel**: la página busca `manuel.glb` (o `Manuel.glb`, o `nino.glb`, el que prepara `Nino.py` en el
-  repositorio *mi-perro*) en esta carpeta. Como Manuel es un niño de verdad, **no se sube al repositorio**
-  (`.gitignore` lo evita). En su lugar, en la portada se pulsa **«cambiar»** junto a «Manuel» y se elige el
-  archivo del móvil o del ordenador: se queda guardado **solo en ese dispositivo** y no se sube a
-  internet. Lo mismo vale para el estadio.
+- `nino.glb`: **Manuel**, ya preparado con `Nino.py` del repositorio *mi-perro* (brazo bajado, animaciones de
+  andar, correr, chutar… y el balón como pieza aparte, que la intro quita). Si no estuviera, la página busca
+  `manuel.glb` o `Manuel.glb`, y en la portada se puede pulsar **«cambiar»** junto a «Manuel» para elegir otro
+  archivo del dispositivo (se guarda solo en ese dispositivo). Lo mismo vale para el estadio.
 - `reserva.glb`: si no hay modelo de Manuel, sale un niño de dibujos inventado (Hugo, uno de los amigos de
   *mi-perro*) con la equipación blanca.
 
