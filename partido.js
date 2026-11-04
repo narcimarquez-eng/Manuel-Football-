@@ -282,10 +282,33 @@ export async function crearPartido(C) {
     const cab = p(h.cabeza), fin = p(h.cabezaFin), cad = p(h.cadera), rod = p(h.rodilla), cue = p(h.cuello);
     const altoCabeza = cab && fin ? fin.distanceTo(cab) : ALTO * 0.15;
     let matAlto = new THREE.Matrix4();
-    baseEscena.traverse((o) => { if (o.isSkinnedMesh) matAlto = o.matrixWorld.clone(); });
+    const cajaCabeza = new THREE.Box3(), cajaCuello = new THREE.Box3(), v = new V3();
+    baseEscena.traverse((o) => {
+      if (!o.isSkinnedMesh) return;
+      matAlto = o.matrixWorld.clone();
+      const g = o.geometry, pos = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, bs = o.skeleton.bones;
+      const esCabeza = bs.map((b) => b === h.cabeza || b === h.cabezaFin || (h.cabeza && b.parent === h.cabeza));
+      const esCuello = bs.map((b) => b === h.cuello);
+      const marca = new Float32Array(pos.count);
+      for (let i = 0; i < pos.count; i++) {
+        let wc = 0, wn = 0;
+        for (let k = 0; k < 4; k++) {
+          const b = k === 0 ? si.getX(i) : k === 1 ? si.getY(i) : k === 2 ? si.getZ(i) : si.getW(i);
+          const w = k === 0 ? sw.getX(i) : k === 1 ? sw.getY(i) : k === 2 ? sw.getZ(i) : sw.getW(i);
+          if (esCabeza[b]) wc += w; if (esCuello[b]) wn += w;
+        }
+        marca[i] = wc + wn;
+        if (wc > 0.5 || wn > 0.5) { o.getVertexPosition(i, v); v.applyMatrix4(o.matrixWorld); (wc > 0.5 ? cajaCabeza : cajaCuello).expandByPoint(v); }
+      }
+      g.setAttribute('aCabeza', new THREE.BufferAttribute(marca, 1));
+    });
     cont.remove(baseEscena);
     const yCuello = cue ? cue.y : ALTO * 0.8, yCabeza = cab ? cab.y : ALTO * 0.86;
-    return { altoCabeza: clamp(altoCabeza, ALTO * 0.1, ALTO * 0.22), corte: yCuello + (yCabeza - yCuello) * 0.15, largoCuello: Math.max(0.03, yCabeza - yCuello), cintura: cad ? cad.y - ALTO * 0.035 : ALTO * 0.5, rodilla: rod ? rod.y - ALTO * 0.02 : ALTO * 0.28, matAlto };
+    const pCab = cab || new V3(0, ALTO * 0.86, 0);
+    const cabeza = cajaCabeza.isEmpty() ? null : { centro: cajaCabeza.getCenter(new V3()).sub(pCab), tam: cajaCabeza.getSize(new V3()) };
+    const cuello = cajaCuello.isEmpty() ? null : { abajo: cajaCuello.min.y - pCab.y, ancho: Math.max(cajaCuello.max.x - cajaCuello.min.x, cajaCuello.max.z - cajaCuello.min.z), z: (cajaCuello.min.z + cajaCuello.max.z) / 2 - pCab.z };
+    console.log('Cabeza original:', cabeza, 'cuello:', cuello);
+    return { cabeza, cuello, altoCabeza: clamp(altoCabeza, ALTO * 0.1, ALTO * 0.22), corte: yCuello + (yCabeza - yCuello) * 0.15, largoCuello: Math.max(0.03, yCabeza - yCuello), cintura: cad ? cad.y - ALTO * 0.035 : ALTO * 0.5, rodilla: rod ? rod.y - ALTO * 0.02 : ALTO * 0.28, matAlto };
   })();
 
   // Material que cambia la equipación blanca por los colores del equipo y el tono de la piel
@@ -297,15 +320,15 @@ export async function crearPartido(C) {
     const u = {
       uCamiseta: { value: lin(opc.camiseta || '#ffffff') }, uPantalon: { value: lin(opc.pantalon || '#ffffff') }, uMedias: { value: lin(opc.medias || '#ffffff') },
       uPiel: { value: new V3(lin(opc.piel).r / PIEL_REF.r, lin(opc.piel).g / PIEL_REF.g, lin(opc.piel).b / PIEL_REF.b) },
-      uKit: { value: opc.cambiarKit ? 1 : 0 }, uCorte: { value: opc.cortar ? MEDIDAS.corte : 99 }, uCintura: { value: MEDIDAS.cintura }, uRodilla: { value: MEDIDAS.rodilla }, uMatAlto: { value: MEDIDAS.matAlto },
+      uKit: { value: opc.cambiarKit ? 1 : 0 }, uCorte: { value: opc.cortar ? (MEDIDAS.cabeza ? 49 : MEDIDAS.corte) : 99 }, uCintura: { value: MEDIDAS.cintura }, uRodilla: { value: MEDIDAS.rodilla }, uMatAlto: { value: MEDIDAS.matAlto },
     };
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, u);
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform mat4 uMatAlto; varying float vAlto;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAlto = (uMatAlto * vec4(position, 1.0)).y;');
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform mat4 uMatAlto; varying float vAlto; attribute float aCabeza; varying float vCab;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAlto = (uMatAlto * vec4(position, 1.0)).y; vCab = aCabeza;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-        varying float vAlto; uniform vec3 uCamiseta, uPantalon, uMedias, uPiel; uniform float uCintura, uRodilla, uKit, uCorte;`)
-        .replace('void main() {', 'void main() {\n  if (vAlto > uCorte) discard;')
+        varying float vAlto; varying float vCab; uniform vec3 uCamiseta, uPantalon, uMedias, uPiel; uniform float uCintura, uRodilla, uKit, uCorte;`)
+        .replace('void main() {', 'void main() {\n  if (vCab > 0.45 && uCorte < 50.0) discard;\n  if (vAlto > uCorte) discard;')
         .replace('#include <map_fragment>', `#include <map_fragment>
         {
           vec3 c = diffuseColor.rgb;
@@ -363,7 +386,8 @@ export async function crearPartido(C) {
     const g = new THREE.Group();
     const mPiel = new THREE.MeshStandardMaterial({ color: r.piel, roughness: 0.75 });
     const mPelo = new THREE.MeshStandardMaterial({ color: r.pelo, roughness: 0.85 });
-    const cara = new THREE.Mesh(geoEsfera, new THREE.MeshStandardMaterial({ map: texturaCara(r), roughness: 0.7 }));
+    const tc = texturaCara(r);
+    const cara = new THREE.Mesh(geoEsfera, new THREE.MeshStandardMaterial({ map: tc, roughness: 0.7, emissive: 0xffffff, emissiveMap: tc, emissiveIntensity: 0.18 }));
     cara.scale.set(R * 0.93, R * 1.04, R * 0.98); cara.castShadow = true; g.add(cara);
     for (const s of [-1, 1]) { const o = new THREE.Mesh(geoBolita, mPiel); o.scale.set(R * 0.16, R * 0.24, R * 0.12); o.position.set(s * R * 0.93, -R * 0.05, -R * 0.02); g.add(o); }
     const nariz = new THREE.Mesh(geoBolita, mPiel); nariz.scale.setScalar(R * 0.14); nariz.position.set(0, -R * 0.12, R * 0.97); g.add(nariz);
@@ -422,11 +446,16 @@ export async function crearPartido(C) {
         cont.remove(m); j.inclina.add(m);
         j.h.cabeza.scale.setScalar(0.001);
         const pivote = new THREE.Group(); j.h.cuello.add(pivote); pivote.scale.setScalar(1 / sCuello);
-        const R = MEDIDAS.altoCabeza * 0.62;
-        const cab = crearCabeza(rasgos, R); cab.position.set(0, MEDIDAS.altoCabeza * 0.5, R * 0.08); pivote.add(cab);
-        const lc = MEDIDAS.largoCuello * 1.3 + R * 0.4;
-        const cuello = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.4, R * 0.5, lc, 12), new THREE.MeshStandardMaterial({ color: rasgos.piel, roughness: 0.8 }));
-        cuello.position.set(0, -lc / 2 + R * 0.35, -R * 0.05); cuello.castShadow = true; pivote.add(cuello);
+        const MC = MEDIDAS.cabeza;
+        // un poco más grande que la original, como en los dibujos, y con la barbilla en su sitio
+        const R = MC ? Math.max(MC.tam.x, MC.tam.z) * 0.5 * 0.98 : MEDIDAS.altoCabeza * 0.55;
+        const centro = MC ? MC.centro.clone().add(new V3(0, R * 0.08, 0)) : new V3(0, MEDIDAS.altoCabeza * 0.45, 0);
+        const cab = crearCabeza(rasgos, R); cab.position.copy(centro); pivote.add(cab);
+        const MN = MEDIDAS.cuello;
+        const abajo = MN ? MN.abajo - R * 0.15 : -MEDIDAS.largoCuello, arriba = centro.y - R * 0.55;
+        const lc = Math.max(0.02, arriba - abajo), rc = MN ? clamp(MN.ancho * 0.42, R * 0.3, R * 0.55) : R * 0.42;
+        const cuello = new THREE.Mesh(new THREE.CylinderGeometry(rc * 0.9, rc, lc, 14), new THREE.MeshStandardMaterial({ color: rasgos.piel, roughness: 0.8 }));
+        cuello.position.set(0, abajo + lc / 2, MN ? MN.z : centro.z * 0.5); cuello.castShadow = true; pivote.add(cuello);
         j.pivoteCabeza = pivote; j.desfaseCabeza = desfase;
       }
       j.mixer = new THREE.AnimationMixer(m);
@@ -1315,6 +1344,7 @@ export async function crearPartido(C) {
       camaraTele(dtReal, cerca); aplicarCamara(MOVIL && camera.aspect < 1 ? 46 : 36);
       if (P.superJ && P.tLento <= 0) P.superJ = null;
     }
+    if (C.PARAMS.has('sigue')) { const j = P.todos[+C.PARAMS.get('sigue') || 0], an = +(C.PARAMS.get('angulo') || 0); camPos.set(j.pos.x + Math.sin(j.rumbo + an) * 2.2, 1.2, j.pos.z + Math.cos(j.rumbo + an) * 2.2); camMira.set(j.pos.x, 1.0, j.pos.z); aplicarCamara(40); }
     // marcas
     const yoAhora = P.controlado;
     marca.visible = !!yoAhora && est !== 'gol' && !P.autoMio;
