@@ -240,6 +240,14 @@ async function descargar(nombres) {
       if (!r.ok) continue;
       const b = await r.arrayBuffer();
       if (esGlb(b)) return { buffer: b, nombre: n };
+    } catch (e) { /* probamos la copia en texto */ }
+    try {
+      // copia en base64 (.glb.txt), para servidores que no sirven .glb
+      const r = await fetch(encodeURI(n + '.txt'), { cache: 'no-cache' });
+      if (!r.ok) continue;
+      const bin = atob((await r.text()).trim()), bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      if (esGlb(bytes.buffer)) return { buffer: bytes.buffer, nombre: n };
     } catch (e) { /* probamos el siguiente */ }
   }
   return null;
