@@ -60,6 +60,8 @@
   #portada .nombre { font-size: clamp(52px, 12vw, 150px); }
   #portada .sub { font-size: clamp(13px, 2.2vw, 26px); }
   #empezar { font-size: 18px; padding: 14px 34px; min-height: 52px; }
+  .pt-botones { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  #jugarPortada { min-height: 52px; font-size: 16px; }
   #estado { font-size: 14px; color: var(--gris); min-height: 20px; letter-spacing: .08em; }
   .fichas { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 680px; }
   .ficha { font-size: 13px; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); display: flex; gap: 8px; align-items: center; }
@@ -85,7 +87,7 @@
 <div class="rotulo" id="rotuloManuel"><div class="l1">MANUEL · Nº 10</div><div class="l2">LA NUEVA ESTRELLA</div></div>
 <div id="subtitulo"></div>
 <div id="titulo"><div class="logo"><div class="nombre">MANUEL</div><div class="sub">FOOTBALL</div></div></div>
-<div id="final"><button class="boton" id="repetir">↺ Ver otra vez</button><button class="boton oro" id="jugar">⚽ ¡A jugar!</button></div>
+<div id="final"><button class="boton" id="repetir">↺ Ver otra vez</button><button class="boton oro" id="jugar">⚽ ¡A jugar el partido!</button></div>
 <button class="boton" id="saltar">Saltar ⏭</button>
 <button class="boton" id="volumen" aria-label="Sonido">🔊</button>
 <div id="negro" class="capa"></div>
@@ -93,7 +95,7 @@
 <div id="aviso"></div>
 <div id="portada">
   <div class="logo"><div class="nombre">MANUEL</div><div class="sub">FOOTBALL</div></div>
-  <button class="boton oro" id="empezar" disabled>Cargando…</button>
+  <div class="pt-botones"><button class="boton oro" id="empezar" disabled>Cargando…</button><button class="boton" id="jugarPortada" disabled>⚽ JUGAR PARTIDO</button></div>
   <div id="estado">Preparando el estadio…</div>
   <div class="fichas">
     <div class="ficha">🧒 <span id="fManuel">Manuel: buscando…</span> <label>cambiar<input type="file" id="archivoManuel" accept=".glb,model/gltf-binary" hidden></label></div>
@@ -844,7 +846,7 @@ function montarManuel(gltf, deRepuesto) {
     const paso = Math.max(1, Math.floor(p.count / 8000));
     for (let i = 0; i < p.count; i += paso) {
       let mejor = 0, w = -1;
-      for (let k = 0; k < 4; k++) { const wk = sw.getComponent(i, k); if (wk > w) { w = wk; mejor = si.getComponent(i, k); } }
+      for (let k = 0; k < 4; k++) { const wk = (k === 0 ? sw.getX(i) : k === 1 ? sw.getY(i) : k === 2 ? sw.getZ(i) : sw.getW(i)); if (wk > w) { w = wk; mejor = (k === 0 ? si.getX(i) : k === 1 ? si.getY(i) : k === 2 ? si.getZ(i) : si.getW(i)); } }
       const nb = ((huesos[mejor] && huesos[mejor].name) || '').toLowerCase();
       if (/arm|hand|mano|brazo|finger|thumb|dedo|index|middle|ring|pinky|ball|balon/.test(nb)) continue;
       o.getVertexPosition(i, v); v.applyMatrix4(o.matrixWorld);
@@ -862,7 +864,7 @@ function montarManuel(gltf, deRepuesto) {
     const frente = new V3().crossVectors(a.sub(b).setY(0).normalize(), new V3(0, 1, 0));
     if (frente.z < 0) modelo.rotation.y += Math.PI;
   }
-  MAN.modelo = modelo;
+  MAN.modelo = modelo; MAN.gltf = gltf; MAN.clips = gltf.animations;
   MAN.reposo = [];
   modelo.traverse((o) => { if (o.isBone) MAN.reposo.push([o, o.quaternion.clone()]); });
   MAN.mixer = new THREE.AnimationMixer(modelo);
@@ -883,7 +885,7 @@ function montarMuneco() {
   const m = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.6 });
   const cuerpo = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.55, 6, 12), m); cuerpo.position.y = 0.62; cuerpo.castShadow = true;
   const cab = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), new THREE.MeshStandardMaterial({ color: 0xe9bf9b })); cab.position.y = 1.08; cab.castShadow = true;
-  MAN.base.add(cuerpo, cab); MAN.modelo = null; MAN.mixer = null; MAN.h = {};
+  MAN.base.add(cuerpo, cab); MAN.modelo = null; MAN.mixer = null; MAN.h = {}; MAN.gltf = null;
 }
 
 // Recorrido: [tiempo, z relativa a la boca del túnel]
@@ -1378,6 +1380,14 @@ function bucle() {
   requestAnimationFrame(bucle);
   const ahora = performance.now(); let dt = Math.min(0.05, (ahora - ultimo) / 1000); ultimo = ahora;
   if (PASOS) { dt = 1 / 30; tVirtual += dt; }
+  if (modo === 'partido') {
+    tJuego += dt;
+    if (JUEGO) JUEGO.paso(dt);
+    actualizarEfectos(dt, tJuego); CONFETI.actualizar(dt, tJuego);
+    cielo.position.copy(camera.position);
+    if (!SIN_DIBUJO || ++cuadros % 300 === 0) composer.render();
+    return;
+  }
   let t;
   if (modo === 'portada') { tPortada += dt; t = -1; }
   else { t = tiempoIntro(); sonido.tick(); }
@@ -1444,7 +1454,42 @@ $('volumen').addEventListener('click', () => {
 });
 let avisoT = 0;
 function aviso(txt) { const a = $('aviso'); a.textContent = txt; a.classList.add('ver'); clearTimeout(avisoT); avisoT = setTimeout(() => a.classList.remove('ver'), 2600); }
-$('jugar').addEventListener('click', () => aviso('¡El partido llega muy pronto! ⚽'));
+let JUEGO = null, tJuego = 0, cuadros = 0;
+const SIN_DIBUJO = PARAMS.has('sindibujo');   // solo para probar la lógica del partido deprisa
+async function abrirPartido() {
+  if (modo === 'partido') return;
+  sonido.iniciar();
+  if (sonido.ctx) { sonido.nuevoBus(); sonido.bucle = false; sonido.amortiguar(7000, sonido.ctx.currentTime, 0.1); }
+  try { speechSynthesis.cancel(); } catch (e) { /* sin voz */ }
+  modo = 'partido';
+  document.body.classList.remove('cine');
+  ['titulo', 'final', 'subtitulo', 'rotuloEstadio', 'rotuloManuel', 'cartel1', 'cartel2'].forEach((id) => $(id).classList.remove('ver'));
+  $('portada').classList.add('fuera'); $('negro').style.opacity = '0'; $('flash').style.opacity = '0';
+  actualizarEscena(30, 0); TUNEL.visible = false; FAROS.forEach((f) => { f.visible = false; });
+  dibujarPantalla(1);
+  const sombra = { ...foco.shadow.camera };
+  Object.assign(foco.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 160 }); foco.shadow.camera.updateProjectionMatrix();
+  aviso('Preparando a los jugadores…');
+  try {
+    const { crearPartido } = await import('./partido.js');
+    JUEGO = await crearPartido({
+      scene, camera, renderer, EST, MAN, sonido, U, U_ESCALA, foco, MOVIL, PARAMS, descargar, parsear, ajustarFov, apuntar,
+      cohete, confeti: (c, n) => CONFETI.soltar(c, n),
+      estela: (p, v) => { for (let k = 0; k < 3; k++) { _v.set(-v.x * 0.05 + (Math.random() - 0.5), -v.y * 0.05 + Math.random() * 0.6, -v.z * 0.05 + (Math.random() - 0.5)); FUEGO.emitir(p, _v, { c0: [2.6, 1.8, 0.6], c1: [1.2, 0.2, 0.02], dur: 0.45, tam: 0.55, crece: 1.4, alfa: 0.8 }); } },
+      destello: (op) => { const f = $('flash'); f.style.transition = 'none'; f.style.opacity = String(op); void f.offsetWidth; f.style.transition = 'opacity .7s'; f.style.opacity = '0'; },
+      alSalir: () => {
+        JUEGO = null; TUNEL.visible = true; Object.assign(foco.shadow.camera, sombra); foco.shadow.camera.updateProjectionMatrix();
+        modo = 'portada'; empezar(0);
+      },
+    });
+    $('aviso').classList.remove('ver');
+  } catch (err) {
+    console.error(err); aviso('No se ha podido abrir el partido: ' + (err && err.message || err));
+    modo = 'portada'; $('portada').classList.remove('fuera');
+  }
+}
+$('jugar').addEventListener('click', abrirPartido);
+$('jugarPortada').addEventListener('click', abrirPartido);
 
 const estado = (txt) => { $('estado').textContent = txt; };
 async function cargarEstadio(buffer, nombre) {
@@ -1478,8 +1523,9 @@ async function cargarTodo() {
     saltoPendiente = true;
     renderer.compile(scene, camera);
     estado('');
-    $('empezar').disabled = false; $('empezar').textContent = '▶ SALIR AL CÉSPED';
+    $('empezar').disabled = false; $('empezar').textContent = '▶ SALIR AL CÉSPED'; $('jugarPortada').disabled = false;
     $('negro').style.opacity = '0';
+    if (PARAMS.has('partido') || PARAMS.has('auto')) abrirPartido();
     const desde = parseFloat(PARAMS.get('t'));
     if (!isNaN(desde)) empezar(desde);
     window.__listo = true;
@@ -1500,7 +1546,7 @@ $('archivoManuel').addEventListener('change', (e) => alElegir(e.target, 'manuel'
 $('archivoEstadio').addEventListener('change', (e) => alElegir(e.target, 'estadio', cargarEstadio));
 
 if (PARAMS.has('prueba')) {
-  window.__prueba = { Sonido, partitura, B, FIN, MAN, EST, ir: (t) => empezar(t), get publico() { return PUBLICO; } };
+  window.__prueba = { Sonido, partitura, B, FIN, MAN, EST, ir: (t) => empezar(t), get publico() { return PUBLICO; }, get juego() { return JUEGO; } };
   if (PASOS) { const st = document.createElement('style'); st.textContent = '*{transition:none!important}'; document.head.appendChild(st); }
 }
 bucle();

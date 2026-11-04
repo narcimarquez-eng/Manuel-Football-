@@ -32,6 +32,31 @@ Detalles:
 - **Voz** del speaker con la síntesis de voz del navegador (con subtítulos por si no hay voz en español).
 - Botones **Saltar**, **silenciar**, **Ver otra vez** y **¡A jugar!** (el partido llegará pronto).
 
+## El partido (`partido.js`)
+
+Al acabar la intro, **¡A jugar el partido!** (o **⚽ Jugar partido** en la portada) abre un partido de
+fútbol arcade **11 contra 11** en el mismo estadio: Manuel FC (Manuel con el 10) contra uno de cuatro rivales
+(Tiburones, Volcanes, Halcones o Relámpagos), con duración y dificultad a elegir.
+
+- **Jugadores**: todos salen del modelo de Manuel (`jugador.glb`, una versión ligera de `nino.glb` hecha con
+  glTF-Transform). A cada uno se le quita la cabeza y se le pone otra de dibujo con su cara, sus ojos, su pelo
+  (corto, pinchos, afro, cresta, coleta, rizos, rapado o flequillo) y su color de piel, que también cambia en
+  brazos y piernas. Tienen alturas distintas y la equipación de su equipo; los porteros van de otro color.
+  Solo Manuel conserva su cara.
+- **Controles**: flechas o WASD para correr, **Z** pase (mantener: pase largo), **X** tiro (mantener para
+  cargar la potencia), **Mayús** sprint. Sin balón, **Z** cambia de jugador y **X** hace una entrada en plancha.
+  **P** pausa. En el móvil hay joystick y botones PASE, TIRO y ⚡; también vale un mando.
+- **Supertiro**: la barra se llena teniendo el balón, pasando y robando. Llena, un tiro cargado a tope se
+  convierte en un supertiro de fuego con cámara lenta que el portero casi nunca para.
+- **El ordenador** juega en 4-4-2: presiona, hace entradas, pasa hacia delante, centra desde la banda y chuta;
+  los porteros se colocan, salen y se estiran (paradas, despejes y paradones).
+- Hay córners, saques de banda y de puerta, saque de centro, descanso, cabezazos, rebotes en los postes,
+  celebraciones con fuegos artificiales y confeti, grada que se anima cerca de las áreas, la ola, cantos
+  «¡MA-NUEL!», pitidos del árbitro, narrador y radar del campo.
+
+Para probar: `?partido` abre el partido directamente y `?auto=2` juega un partido de 2 minutos en el que el
+ordenador lleva a los dos equipos.
+
 ## Modelos
 
 - `santiago_bernabeu.glb`: el estadio. La página lo escala sola (el césped a su tamaño real),
@@ -40,6 +65,8 @@ Detalles:
   andar, correr, chutar… y el balón como pieza aparte, que la intro quita). Si no estuviera, la página busca
   `manuel.glb` o `Manuel.glb`, y en la portada se puede pulsar **«cambiar»** junto a «Manuel» para elegir otro
   archivo del dispositivo (se guarda solo en ese dispositivo). Lo mismo vale para el estadio.
+- `jugador.glb`: el modelo de Manuel simplificado (unos 9.000 triángulos en vez de 88.000) para los otros 21
+  futbolistas.
 - `reserva.glb`: si no hay modelo de Manuel, sale un niño de dibujos inventado (Hugo, uno de los amigos de
   *mi-perro*) con la equipación blanca.
 
