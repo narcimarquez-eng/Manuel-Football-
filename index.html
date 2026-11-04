@@ -799,6 +799,9 @@ function montarManuel(gltf, deRepuesto) {
     const fuera = []; modelo.traverse((o) => { if (/^casco/i.test(o.name) || (o.isMesh && /casco|visera|franja/i.test(o.material.name))) fuera.push(o); });
     fuera.forEach((o) => o.parent && o.parent.remove(o));
   }
+  // el balón suelto que trae nino.glb (lo prepara Nino.py en mi-perro) no sale en la intro
+  const balones = []; modelo.traverse((o) => { if (o.isMesh && !o.isSkinnedMesh && /^(bal[oó]n|ball|soccer)/i.test(o.name)) balones.push(o); });
+  balones.forEach((o) => o.parent && o.parent.remove(o));
   modelo.traverse((o) => {
     if (o.isMesh) {
       o.castShadow = true; o.frustumCulled = false;
