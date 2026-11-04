@@ -308,7 +308,7 @@ export async function crearPartido(C) {
     const cabeza = cajaCabeza.isEmpty() ? null : { centro: cajaCabeza.getCenter(new V3()).sub(pCab), tam: cajaCabeza.getSize(new V3()) };
     const cuello = cajaCuello.isEmpty() ? null : { abajo: cajaCuello.min.y - pCab.y, ancho: Math.max(cajaCuello.max.x - cajaCuello.min.x, cajaCuello.max.z - cajaCuello.min.z), z: (cajaCuello.min.z + cajaCuello.max.z) / 2 - pCab.z };
     console.log('Cabeza original:', cabeza, 'cuello:', cuello);
-    return { cabeza, cuello, altoCabeza: clamp(altoCabeza, ALTO * 0.1, ALTO * 0.22), corte: yCuello + (yCabeza - yCuello) * 0.15, largoCuello: Math.max(0.03, yCabeza - yCuello), cintura: cad ? cad.y - ALTO * 0.035 : ALTO * 0.5, rodilla: rod ? rod.y - ALTO * 0.02 : ALTO * 0.28, matAlto };
+    return { cabeza, cuello, cabezaY: pCab.y, altoCabeza: clamp(altoCabeza, ALTO * 0.1, ALTO * 0.22), corte: yCuello + 0.004, yCuello, largoCuello: Math.max(0.03, yCabeza - yCuello), cintura: cad ? cad.y - ALTO * 0.035 : ALTO * 0.5, rodilla: rod ? rod.y - ALTO * 0.02 : ALTO * 0.28, matAlto };
   })();
 
   // Material que cambia la equipación blanca por los colores del equipo y el tono de la piel
@@ -320,7 +320,7 @@ export async function crearPartido(C) {
     const u = {
       uCamiseta: { value: lin(opc.camiseta || '#ffffff') }, uPantalon: { value: lin(opc.pantalon || '#ffffff') }, uMedias: { value: lin(opc.medias || '#ffffff') },
       uPiel: { value: new V3(lin(opc.piel).r / PIEL_REF.r, lin(opc.piel).g / PIEL_REF.g, lin(opc.piel).b / PIEL_REF.b) },
-      uKit: { value: opc.cambiarKit ? 1 : 0 }, uCorte: { value: opc.cortar ? (MEDIDAS.cabeza ? 49 : MEDIDAS.corte) : 99 }, uCintura: { value: MEDIDAS.cintura }, uRodilla: { value: MEDIDAS.rodilla }, uMatAlto: { value: MEDIDAS.matAlto },
+      uKit: { value: opc.cambiarKit ? 1 : 0 }, uCorte: { value: opc.cortar ? MEDIDAS.corte : 99 }, uCintura: { value: MEDIDAS.cintura }, uRodilla: { value: MEDIDAS.rodilla }, uMatAlto: { value: MEDIDAS.matAlto },
     };
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, u);
@@ -328,7 +328,7 @@ export async function crearPartido(C) {
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAlto = (uMatAlto * vec4(position, 1.0)).y; vCab = aCabeza;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
         varying float vAlto; varying float vCab; uniform vec3 uCamiseta, uPantalon, uMedias, uPiel; uniform float uCintura, uRodilla, uKit, uCorte;`)
-        .replace('void main() {', 'void main() {\n  if (vCab > 0.45 && uCorte < 50.0) discard;\n  if (vAlto > uCorte) discard;')
+        .replace('void main() {', 'void main() {\n  if (vCab > 0.25 && uCorte < 50.0) discard;\n  if (vAlto > uCorte) discard;')
         .replace('#include <map_fragment>', `#include <map_fragment>
         {
           vec3 c = diffuseColor.rgb;
@@ -448,12 +448,12 @@ export async function crearPartido(C) {
         const pivote = new THREE.Group(); j.h.cuello.add(pivote); pivote.scale.setScalar(1 / sCuello);
         const MC = MEDIDAS.cabeza;
         // un poco más grande que la original, como en los dibujos, y con la barbilla en su sitio
-        const R = MC ? Math.max(MC.tam.x, MC.tam.z) * 0.5 * 0.98 : MEDIDAS.altoCabeza * 0.55;
-        const centro = MC ? MC.centro.clone().add(new V3(0, R * 0.08, 0)) : new V3(0, MEDIDAS.altoCabeza * 0.45, 0);
+        const R = MC ? Math.max(MC.tam.x, MC.tam.z) * 0.5 * 1.15 : MEDIDAS.altoCabeza * 0.55;
+        const centro = MC ? MC.centro.clone().add(new V3(0, -R * 0.12, R * 0.04)) : new V3(0, MEDIDAS.altoCabeza * 0.45, 0);
         const cab = crearCabeza(rasgos, R); cab.position.copy(centro); pivote.add(cab);
         const MN = MEDIDAS.cuello;
-        const abajo = MN ? MN.abajo - R * 0.15 : -MEDIDAS.largoCuello, arriba = centro.y - R * 0.55;
-        const lc = Math.max(0.02, arriba - abajo), rc = MN ? clamp(MN.ancho * 0.42, R * 0.3, R * 0.55) : R * 0.42;
+        const abajo = (MEDIDAS.yCuello - (MEDIDAS.cabezaY || 0)) - R * 0.35, arriba = centro.y - R * 0.5;
+        const lc = Math.max(0.02, arriba - abajo), rc = MN ? clamp(MN.ancho * 0.55, R * 0.42, R * 0.62) : R * 0.5;
         const cuello = new THREE.Mesh(new THREE.CylinderGeometry(rc * 0.9, rc, lc, 14), new THREE.MeshStandardMaterial({ color: rasgos.piel, roughness: 0.8 }));
         cuello.position.set(0, abajo + lc / 2, MN ? MN.z : centro.z * 0.5); cuello.castShadow = true; pivote.add(cuello);
         j.pivoteCabeza = pivote; j.desfaseCabeza = desfase;
@@ -1244,7 +1244,7 @@ export async function crearPartido(C) {
       // vuelta lenta alrededor de los dos equipos formados en el centro
       const a = 0.35 + Math.sin(tTotal * 0.12) * 0.7;
       camPos.set(Math.sin(a) * 11, 2.6, Math.cos(a) * 11); camMira.set(0, 1.0, 0);
-      if (C.PARAMS.has('retrato')) { const j = P.todos[+C.PARAMS.get('retrato') || 0]; camPos.set(j.pos.x + 0.6, 1.25, j.pos.z + 2.2); camMira.set(j.pos.x + 0.6, 0.95, j.pos.z); }
+      if (C.PARAMS.has('retrato')) { const j = P.todos[+C.PARAMS.get('retrato') || 0]; const hc = +(C.PARAMS.get('altura') || 1.25); camPos.set(j.pos.x + 0.6, hc, j.pos.z + 2.2); camMira.set(j.pos.x + 0.6, 0.95, j.pos.z); }
       aplicarCamara(40);
       for (const j of P.todos) animar(j, dtReal, tTotal);
       return;
