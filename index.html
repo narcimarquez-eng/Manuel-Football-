@@ -1,0 +1,1499 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#05060d">
+<title>Manuel Football</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Oswald:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --oro: #f3d27a; --tinta: #f4f1ea; --gris: #cfc7b0; --fondo: #05060d; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--fondo); color: var(--tinta); overflow: hidden;
+    font-family: Oswald, system-ui, sans-serif; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+  #lienzo { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .capa { position: fixed; inset: 0; pointer-events: none; }
+  #vineta { background: radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,.5) 100%); z-index: 4; }
+  #barras .b { position: fixed; left: 0; right: 0; height: 0; background: #000; transition: height 1.4s ease; z-index: 5; }
+  #barras .arriba { top: 0; } #barras .abajo { bottom: 0; }
+  body.cine #barras .b { height: 8vh; }
+  @media (orientation: portrait) { body.cine #barras .b { height: 5vh; } }
+  #negro { background: #000; opacity: 1; transition: opacity 1.8s ease; z-index: 6; }
+  #flash { background: #fff; opacity: 0; z-index: 7; }
+  .cartel { position: fixed; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; padding: 0 16px;
+    font-family: Cinzel, Georgia, serif; font-weight: 700; font-size: clamp(18px, 3.2vw, 42px); letter-spacing: .3em;
+    color: #efe7d2; text-shadow: 0 0 20px rgba(0,0,0,.9); opacity: 0; transition: opacity 1.2s ease, letter-spacing 7s ease; z-index: 8; }
+  .cartel.ver { opacity: 1; letter-spacing: .45em; }
+  .rotulo { position: fixed; left: max(16px, 5vw); bottom: calc(8vh + 26px); z-index: 8; opacity: 0; transform: translateX(-24px); transition: all .9s ease; }
+  .rotulo.ver { opacity: 1; transform: none; }
+  .rotulo .l1 { font-weight: 700; font-size: clamp(17px, 2.6vw, 32px); letter-spacing: .14em; border-left: 4px solid var(--oro); padding-left: 12px; text-shadow: 0 2px 12px #000; }
+  .rotulo .l2 { font-weight: 300; font-size: clamp(11px, 1.4vw, 17px); letter-spacing: .32em; color: var(--gris); padding-left: 16px; margin-top: 4px; text-shadow: 0 2px 10px #000; }
+  #subtitulo { position: fixed; left: 0; right: 0; bottom: calc(8vh + 20px); text-align: center; padding: 0 16px; z-index: 8;
+    font-style: italic; font-weight: 300; font-size: clamp(15px, 2.2vw, 26px); opacity: 0; transition: opacity .35s; text-shadow: 0 2px 10px #000; }
+  #subtitulo.ver { opacity: 1; }
+  .logo { display: flex; flex-direction: column; align-items: center; }
+  .logo .nombre { font-family: Cinzel, Georgia, serif; font-weight: 900; line-height: .9; letter-spacing: .06em;
+    background: linear-gradient(180deg, #fff6d6 0%, #f3d27a 38%, #b8862b 62%, #fbe7a6 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 6px 22px rgba(0,0,0,.75)) drop-shadow(0 0 28px rgba(243,210,122,.35)); }
+  .logo .sub { font-weight: 500; letter-spacing: .9em; padding-left: .9em; margin-top: 8px; color: var(--tinta); text-shadow: 0 2px 10px #000; }
+  #titulo { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 9; opacity: 0; transition: opacity 1.6s ease; pointer-events: none; }
+  #titulo .nombre { font-size: clamp(56px, 13vw, 190px); transform: scale(1.18); transition: transform 7s cubic-bezier(.2,.7,.2,1); }
+  #titulo .sub { font-size: clamp(14px, 2.6vw, 34px); }
+  #titulo.ver { opacity: 1; }
+  #titulo.ver .nombre { transform: scale(1); }
+  #final { position: fixed; left: 0; right: 0; bottom: calc(8vh + 26px); display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; padding: 0 16px; z-index: 10; opacity: 0; pointer-events: none; transition: opacity 1s; }
+  #final.ver { opacity: 1; pointer-events: auto; }
+  .boton { font-family: Oswald, system-ui, sans-serif; font-weight: 500; letter-spacing: .12em; font-size: 16px; padding: 12px 24px; min-height: 46px; border-radius: 999px;
+    border: 1px solid rgba(243,210,122,.7); background: rgba(10,10,22,.6); color: var(--tinta); cursor: pointer; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .boton.oro { background: linear-gradient(180deg, #f7dc8c, #c8962f); color: #1a1205; border: none; font-weight: 700; }
+  .boton:disabled { opacity: .55; cursor: default; }
+  #saltar { position: fixed; right: max(16px, 3vw); top: calc(8vh + 14px); z-index: 10; display: none; font-size: 13px; padding: 8px 16px; min-height: 38px; }
+  #volumen { position: fixed; left: max(16px, 3vw); top: calc(8vh + 14px); z-index: 10; display: none; font-size: 16px; padding: 6px 12px; min-height: 38px; letter-spacing: 0; }
+  body.cine #saltar, body.cine #volumen { display: block; }
+  #aviso { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); z-index: 30; padding: 12px 20px; border-radius: 14px; background: rgba(10,10,22,.85);
+    border: 1px solid rgba(243,210,122,.6); opacity: 0; transition: opacity .4s; pointer-events: none; text-align: center; max-width: calc(100vw - 32px); }
+  #aviso.ver { opacity: 1; }
+  #portada { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 16px; text-align: center;
+    background: radial-gradient(ellipse at 50% 42%, rgba(18,22,56,.25), rgba(0,0,0,.82)); transition: opacity 1.1s; }
+  #portada.fuera { opacity: 0; pointer-events: none; }
+  #portada .nombre { font-size: clamp(52px, 12vw, 150px); }
+  #portada .sub { font-size: clamp(13px, 2.2vw, 26px); }
+  #empezar { font-size: 18px; padding: 14px 34px; min-height: 52px; }
+  #estado { font-size: 14px; color: var(--gris); min-height: 20px; letter-spacing: .08em; }
+  .fichas { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 680px; }
+  .ficha { font-size: 13px; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); display: flex; gap: 8px; align-items: center; }
+  .ficha label { color: var(--oro); text-decoration: underline; cursor: pointer; white-space: nowrap; }
+  .nota { font-size: 12px; color: #9a9483; max-width: 540px; line-height: 1.5; }
+  #girar { display: none; } @media (orientation: portrait) { #girar { display: inline; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.7.6/build/index.module.js"
+} }
+</script>
+</head>
+<body>
+<canvas id="lienzo"></canvas>
+<div id="vineta" class="capa"></div>
+<div id="barras"><div class="b arriba"></div><div class="b abajo"></div></div>
+<div class="cartel" id="cartel1">ESTA NOCHE, EN MADRID…</div>
+<div class="cartel" id="cartel2">…UNA ESTRELLA SALE AL CÉSPED</div>
+<div class="rotulo" id="rotuloEstadio"><div class="l1">ESTADIO SANTIAGO BERNABÉU</div><div class="l2">MADRID · NOCHE DE ESTRENO</div></div>
+<div class="rotulo" id="rotuloManuel"><div class="l1">MANUEL · Nº 10</div><div class="l2">LA NUEVA ESTRELLA</div></div>
+<div id="subtitulo"></div>
+<div id="titulo"><div class="logo"><div class="nombre">MANUEL</div><div class="sub">FOOTBALL</div></div></div>
+<div id="final"><button class="boton" id="repetir">↺ Ver otra vez</button><button class="boton oro" id="jugar">⚽ ¡A jugar!</button></div>
+<button class="boton" id="saltar">Saltar ⏭</button>
+<button class="boton" id="volumen" aria-label="Sonido">🔊</button>
+<div id="negro" class="capa"></div>
+<div id="flash" class="capa"></div>
+<div id="aviso"></div>
+<div id="portada">
+  <div class="logo"><div class="nombre">MANUEL</div><div class="sub">FOOTBALL</div></div>
+  <button class="boton oro" id="empezar" disabled>Cargando…</button>
+  <div id="estado">Preparando el estadio…</div>
+  <div class="fichas">
+    <div class="ficha">🧒 <span id="fManuel">Manuel: buscando…</span> <label>cambiar<input type="file" id="archivoManuel" accept=".glb,model/gltf-binary" hidden></label></div>
+    <div class="ficha">🏟️ <span id="fEstadio">Estadio: buscando…</span> <label>cambiar<input type="file" id="archivoEstadio" accept=".glb,model/gltf-binary" hidden></label></div>
+  </div>
+  <div class="nota">Sube el volumen 🔊. Los archivos que elijas aquí se guardan solo en este dispositivo: no se suben a internet. <span id="girar">Se ve mejor con el móvil en horizontal.</span></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+// ============================================================================================
+//  Utilidades
+// ============================================================================================
+const V3 = THREE.Vector3;
+const $ = (id) => document.getElementById(id);
+const PARAMS = new URLSearchParams(location.search);
+const MOVIL = matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const suave = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+const suave2 = (t) => { t = clamp(t, 0, 1); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+const entre = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+function prng(semilla) { let s = semilla >>> 0 || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+const azar = prng(2024);
+const dif = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
+// Curva por tramos: [[t, valor], ...] con paso suave entre puntos
+const tabla = (pts) => (t) => {
+  if (t <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) if (t < pts[i][0]) { const [t0, v0] = pts[i - 1], [t1, v1] = pts[i]; return v0 + (v1 - v0) * suave((t - t0) / (t1 - t0)); }
+  return pts[pts.length - 1][1];
+};
+function lienzo(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
+
+// Tiempo de la música: 90 pulsos por minuto, compases de 4 (todo el guion va sincronizado con ellos)
+const SPB = 60 / 90, BAR = SPB * 4;
+const B = (compas, pulso = 0) => (compas * 4 + pulso) * SPB;
+const FIN = B(20);              // 53,33 s: acaba la intro y queda el título
+const TITULO = B(19);            // 50,67 s: golpe final y aparece MANUEL FOOTBALL
+
+// ============================================================================================
+//  Motor 3D
+// ============================================================================================
+const renderer = new THREE.WebGLRenderer({ canvas: $('lienzo'), antialias: !MOVIL, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, MOVIL ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const ANISO = renderer.capabilities.getMaxAnisotropy();
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0a0e1e, 0.0011);
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.08, 6000);
+camera.position.set(300, 160, 200);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.6, 0.5, 1.05);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+function alRedimensionar() {
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', alRedimensionar);
+
+// Cielo nocturno con el resplandor de la ciudad en el horizonte
+const cielo = new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 16), new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `varying vec3 vP;
+    void main(){ float h = vP.y;
+      vec3 c = mix(vec3(0.075, 0.05, 0.12), vec3(0.006, 0.009, 0.03), smoothstep(0.0, 0.45, h));
+      c += vec3(0.30, 0.16, 0.09) * exp(-max(h, 0.0) * 12.0) * 0.55;
+      if (h < 0.0) c = vec3(0.02, 0.018, 0.03);
+      gl_FragColor = vec4(c, 1.0); }`,
+}));
+cielo.renderOrder = -10;
+scene.add(cielo);
+{ // estrellas
+  const n = 1400, p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const a = azar() * Math.PI * 2, e = Math.asin(0.08 + azar() * 0.92), r = 3500;
+    p.set([Math.cos(a) * Math.cos(e) * r, Math.sin(e) * r, Math.sin(a) * Math.cos(e) * r], i * 3);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  const estrellas = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xcfd8ff, size: 1.6, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.8 }));
+  cielo.add(estrellas);
+}
+const suelo = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshStandardMaterial({ color: 0x0b0d12, roughness: 1 }));
+suelo.rotation.x = -Math.PI / 2; suelo.position.y = -0.45;
+scene.add(suelo);
+
+// Luces: focos del estadio (uno con sombra que sigue a Manuel) y las del túnel
+const hemi = new THREE.HemisphereLight(0x7d8fc4, 0x1c2416, 0.45); scene.add(hemi);
+const foco = new THREE.DirectionalLight(0xfff1df, 2.6);
+foco.castShadow = true;
+foco.shadow.mapSize.set(MOVIL ? 1024 : 2048, MOVIL ? 1024 : 2048);
+Object.assign(foco.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 140 });
+foco.shadow.bias = -0.0004; foco.shadow.normalBias = 0.03;
+scene.add(foco, foco.target);
+const rellenos = [[-70, 60, -50, 1.0, 0xdfe8ff], [70, 60, -50, 0.9, 0xfff4e8], [0, 70, 80, 1.1, 0xeef2ff]].map(([x, y, z, i, c]) => {
+  const l = new THREE.DirectionalLight(c, i); l.position.set(x, y, z); scene.add(l); return l;
+});
+const lucesTunel = [0, 1, 2].map(() => { const l = new THREE.PointLight(0xdfe6ff, 0, 11, 2); scene.add(l); return l; });
+const luzFuego = new THREE.PointLight(0xff8a2a, 0, 30, 2); scene.add(luzFuego);
+
+// Textura redonda para chispas, focos y humo
+const texPunto = (() => {
+  const [c, g] = lienzo(64, 64); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+})();
+
+// ============================================================================================
+//  Carga de archivos (.glb): guardados en el dispositivo, en la carpeta de la página o de repuesto
+// ============================================================================================
+const cargador = new GLTFLoader();
+{
+  const draco = new DRACOLoader(); draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/');
+  cargador.setDRACOLoader(draco); cargador.setMeshoptDecoder(MeshoptDecoder);
+  // Las texturas como <img>: en páginas con política de seguridad estricta fetch() no lee direcciones blob:
+  cargador.register((parser) => { parser.textureLoader = new THREE.TextureLoader(parser.options.manager); return { name: 'texturas_como_imagenes' }; });
+}
+const parsear = (buf) => new Promise((ok, mal) => cargador.parse(buf, '', ok, mal));
+const esGlb = (buf) => buf && buf.byteLength > 20 && new TextDecoder().decode(new Uint8Array(buf, 0, 4)) === 'glTF';
+async function descargar(nombres) {
+  for (const n of nombres) {
+    try {
+      const r = await fetch(encodeURI(n), { cache: 'no-cache' });
+      if (!r.ok) continue;
+      const b = await r.arrayBuffer();
+      if (esGlb(b)) return { buffer: b, nombre: n };
+    } catch (e) { /* probamos el siguiente */ }
+  }
+  return null;
+}
+// Guardar en el dispositivo (IndexedDB). Si el navegador no deja, simplemente no se guarda.
+function bd() {
+  return new Promise((ok, mal) => {
+    try { const r = indexedDB.open('manuel-football', 1); r.onupgradeneeded = () => r.result.createObjectStore('archivos'); r.onsuccess = () => ok(r.result); r.onerror = () => mal(r.error); }
+    catch (e) { mal(e); }
+  });
+}
+async function leerGuardado(clave) {
+  try { const db = await bd(); return await new Promise((ok) => { const q = db.transaction('archivos').objectStore('archivos').get(clave); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); }); }
+  catch (e) { return null; }
+}
+async function guardar(clave, valor) {
+  try { const db = await bd(); await new Promise((ok) => { const tx = db.transaction('archivos', 'readwrite'); tx.objectStore('archivos').put(valor, clave); tx.oncomplete = ok; tx.onerror = ok; }); }
+  catch (e) { /* sin guardar */ }
+}
+
+// ============================================================================================
+//  Estadio: se coloca el .glb con el campo en el centro (105 × 68 m), el largo en el eje X
+//  y la boca del túnel de vestuarios en el lado -Z
+// ============================================================================================
+const EST = {
+  grupo: null, tunel: { x: 0, z: -40, ancho: 4, alto: 2.8 }, mallas: [], pantalla: null, vallas: [],
+  techo: { ax: 62, az: 44, y: 54 }, caja: new THREE.Box3(),
+};
+const NO_GRADA = /cubierta|video|nervio|cojin|plaza|castellana|arbol|coche|campo|tunel|valla|poste|red|bandera|roof|screen|pitch|grass|tree|car/i;
+
+function buscarBoca(raiz) {
+  // vértices de la boca del túnel a ras de suelo; nos quedamos con el grupo más cercano al centro
+  const v = new V3(), cand = [];
+  raiz.traverse((o) => {
+    if (!o.isMesh) return;
+    const n = (o.name + ' ' + (o.material && o.material.name)).toLowerCase();
+    if (!/t[uú]nel|tunnel/.test(n) || !/boca|mouth|entrada|salida/.test(n)) return;
+    const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
+      if (v.y < 4.5 && Math.hypot(v.x, v.z) < 80) cand.push({ o, i, x: v.x, y: v.y, z: v.z });
+    }
+  });
+  if (!cand.length) return null;
+  cand.sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z));
+  const c0 = cand[0], grupo = cand.filter((c) => Math.hypot(c.x - c0.x, c.z - c0.z) < 7);
+  const xs = grupo.map((c) => c.x), zs = grupo.map((c) => c.z), ys = grupo.map((c) => c.y);
+  return { x: (Math.min(...xs) + Math.max(...xs)) / 2, z: (Math.min(...zs) + Math.max(...zs)) / 2,
+    ancho: Math.max(2.5, Math.max(...xs) - Math.min(...xs)), alto: Math.max(2.4, Math.max(...ys)), vertices: grupo };
+}
+
+function montarEstadio(gltf) {
+  if (EST.grupo) { scene.remove(EST.grupo); }
+  const raiz = gltf.scene, interior = new THREE.Group(), grupo = new THREE.Group();
+  interior.add(raiz); grupo.add(interior);
+  grupo.updateMatrixWorld(true);
+  let campo = null;
+  raiz.traverse((o) => { if (o.isMesh && !campo && /campo|pitch|field|c[eé]sped|grass|turf/i.test(o.name + ' ' + (o.material && o.material.name))) campo = o; });
+  const todo = new THREE.Box3().setFromObject(raiz);
+  const caja = campo ? new THREE.Box3().setFromObject(campo) : todo;
+  const t = caja.getSize(new V3()), c = caja.getCenter(new V3());
+  // el césped del .glb incluye las bandas (unos 117 m de largo); sin césped, se supone un estadio de 240 m
+  const largo = campo ? Math.max(t.x, t.z) : Math.max(t.x, t.z) * 117 / 240;
+  interior.position.set(-c.x, campo ? -caja.max.y : -todo.min.y, -c.z);
+  grupo.scale.setScalar(117 / largo);
+  grupo.rotation.y = t.z > t.x ? Math.PI / 2 : 0;
+  grupo.updateMatrixWorld(true);
+  let boca = buscarBoca(raiz);
+  if (boca && boca.z > 0) { grupo.rotation.y += Math.PI; grupo.updateMatrixWorld(true); boca = buscarBoca(raiz); }
+  if (boca) {
+    EST.tunel = { x: boca.x, z: boca.z, ancho: Math.min(boca.ancho, 6), alto: Math.min(boca.alto, 3.4) };
+    // quitamos la tapa negra de la boca para ver el pasillo que construimos detrás
+    const porMalla = new Map();
+    boca.vertices.forEach((c) => { if (!porMalla.has(c.o)) porMalla.set(c.o, new Set()); porMalla.get(c.o).add(c.i); });
+    for (const [o, set] of porMalla) {
+      o.geometry = o.geometry.clone();
+      const idx = o.geometry.index;
+      if (!idx) continue;
+      const a = idx.array;
+      for (let k = 0; k < a.length; k += 3) if (set.has(a[k]) && set.has(a[k + 1]) && set.has(a[k + 2])) a[k] = a[k + 1] = a[k + 2] = a[k];
+      idx.needsUpdate = true;
+    }
+  }
+  EST.mallas = []; EST.vallas = []; EST.pantalla = null;
+  raiz.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = false; o.receiveShadow = o === campo;
+    const n = (o.material && o.material.name) || '';
+    if (/video|pantalla|screen|marcador/i.test(n)) { EST.pantalla = o; o.material = matPantalla; }
+    else if (/valla|board|publi/i.test(n)) { o.material = o.material.clone(); EST.vallas.push(o.material); }
+    if (o.material && o.material.map) o.material.map.anisotropy = ANISO;
+    // de noche: el techo, la fachada y la calle más oscuros (si no, los focos los queman)
+    if (o.material && o.material.color && /cubierta|nervio|cojin|fachada|facade|roof|plaza|castellana|acera|street/i.test(n)) {
+      o.material = o.material.clone(); o.material.color.multiplyScalar(/plaza|castellana|acera|street/i.test(n) ? 0.3 : 0.25);
+    }
+    EST.mallas.push(o);
+  });
+  scene.add(grupo);
+  EST.grupo = grupo;
+  EST.caja.setFromObject(raiz);
+  colocarTunel();
+}
+
+// Pantalla 360º del estadio: un lienzo que se redibuja según el momento
+const [lzPantalla, cxPantalla] = lienzo(1024, 1024);
+const texPantalla = new THREE.CanvasTexture(lzPantalla); texPantalla.colorSpace = THREE.SRGBColorSpace;
+const matPantalla = new THREE.MeshBasicMaterial({ map: texPantalla, color: new THREE.Color(1.6, 1.6, 1.6), side: THREE.DoubleSide });
+function dibujarPantalla(modo) {
+  const g = cxPantalla, cols = 4, filas = 6, w = 1024 / cols, h = 1024 / filas;
+  const textos = modo === 0 ? ['ESTA NOCHE', 'MANUEL', 'FOOTBALL', '★'] : modo === 1 ? ['MANUEL', '10', '⚽', 'MANUEL'] : ['¡GOOOL!', 'MANUEL', '10', '★★★'];
+  for (let f = 0; f < filas; f++) for (let k = 0; k < cols; k++) {
+    const x = k * w, y = f * h, i = f * cols + k;
+    const gr = g.createLinearGradient(x, y, x + w, y + h);
+    const pal = modo === 0 ? [['#0b1a4a', '#1d3fa8'], ['#120a33', '#3b1e8a']] : [['#3b1e8a', '#0d0626'], ['#b8862b', '#f7dc8c'], ['#f4f4f4', '#cfd6e6']];
+    const [a, b] = pal[i % pal.length]; gr.addColorStop(0, a); gr.addColorStop(1, b);
+    g.fillStyle = gr; g.fillRect(x, y, w, h);
+    const claro = a === '#b8862b' || a === '#f4f4f4';
+    g.fillStyle = claro ? '#140b2e' : '#fff6d6';
+    const txt = textos[i % textos.length];
+    g.font = `900 ${txt.length > 6 ? 40 : 70}px Cinzel, Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(txt, x + w / 2, y + h / 2 + 4);
+  }
+  texPantalla.needsUpdate = true;
+}
+dibujarPantalla(0);
+
+// ---------- Pasillo del túnel de vestuarios (detrás de la boca del estadio) ----------
+const TUNEL = new THREE.Group(); scene.add(TUNEL);
+const LARGO_TUNEL = 22;
+let bocaLuz = null, rayosLuz = [];
+function colocarTunel() {
+  TUNEL.clear();
+  const { x, z, ancho, alto } = EST.tunel, L = LARGO_TUNEL, zc = z - L / 2;
+  const [c1, g1] = lienzo(512, 256); // azulejos y franja
+  g1.fillStyle = '#d9dde4'; g1.fillRect(0, 0, 512, 256);
+  g1.strokeStyle = 'rgba(80,90,110,.35)'; g1.lineWidth = 2;
+  for (let i = 0; i <= 512; i += 32) { g1.beginPath(); g1.moveTo(i, 0); g1.lineTo(i, 256); g1.stroke(); }
+  for (let j = 0; j <= 256; j += 32) { g1.beginPath(); g1.moveTo(0, j); g1.lineTo(512, j); g1.stroke(); }
+  g1.fillStyle = '#3b1e8a'; g1.fillRect(0, 150, 512, 34); g1.fillStyle = '#d7a640'; g1.fillRect(0, 186, 512, 8);
+  g1.fillStyle = '#ffffff'; g1.font = '700 26px Oswald, sans-serif'; g1.textBaseline = 'middle';
+  g1.fillText('MANUEL FOOTBALL  ·  ¡A POR ELLOS!', 18, 168);
+  const tAz = new THREE.CanvasTexture(c1); tAz.colorSpace = THREE.SRGBColorSpace; tAz.wrapS = THREE.RepeatWrapping; tAz.repeat.set(L / 8, 1); tAz.anisotropy = ANISO;
+  const pared = new THREE.MeshStandardMaterial({ map: tAz, roughness: 0.35, metalness: 0.0 });
+  const suelo = new THREE.MeshStandardMaterial({ color: 0x23272f, roughness: 0.55 });
+  const techo = new THREE.MeshStandardMaterial({ color: 0x1b1f27, roughness: 0.9 });
+  const plano = (w, h, mat) => new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  const s = plano(ancho, L, suelo); s.rotation.x = -Math.PI / 2; s.position.set(x, 0.015, zc); s.receiveShadow = true; TUNEL.add(s);
+  const te = plano(ancho, L, techo); te.rotation.x = Math.PI / 2; te.position.set(x, alto, zc); TUNEL.add(te);
+  for (const lado of [-1, 1]) {
+    const p = plano(L, alto, pared); p.rotation.y = -lado * Math.PI / 2; p.position.set(x + lado * ancho / 2, alto / 2, zc); TUNEL.add(p);
+  }
+  const fondo = plano(ancho, alto, new THREE.MeshStandardMaterial({ color: 0x2b2f3a, roughness: 0.8 })); fondo.position.set(x, alto / 2, z - L); TUNEL.add(fondo);
+  // tiras de luz en el techo
+  const matLuz = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 2.3, 2.6) });
+  for (let k = 1.5; k < L; k += 3) { const l = plano(ancho * 0.5, 0.18, matLuz); l.rotation.x = Math.PI / 2; l.position.set(x, alto - 0.02, z - k); TUNEL.add(l); }
+  // la luz cegadora del campo al fondo (se ve solo desde dentro)
+  bocaLuz = plano(ancho, alto, new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.6, 1.7), transparent: true, opacity: 0, depthWrite: false }));
+  bocaLuz.rotation.y = Math.PI; bocaLuz.position.set(x, alto / 2, z + 0.05); TUNEL.add(bocaLuz);
+  // rayos de luz que entran por la boca
+  const matRayo = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { uI: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: 'uniform float uI; varying vec2 vUv; void main(){ float a = (1.0 - vUv.y) * smoothstep(0.0,0.35,vUv.x) * smoothstep(1.0,0.65,vUv.x); gl_FragColor = vec4(vec3(1.0,0.97,0.9), a * a * uI * 0.35); }',
+  });
+  rayosLuz = [];
+  for (let k = 0; k < 3; k++) {
+    const r = plano(ancho * 0.9, 9, matRayo); r.rotation.x = -Math.PI / 2 + 0.28 + k * 0.07; r.rotation.y = (k - 1) * 0.12;
+    r.position.set(x + (k - 1) * 0.4, alto * 0.62, z - 4.2); TUNEL.add(r); rayosLuz.push(r);
+  }
+  lucesTunel.forEach((l, i) => l.position.set(x, alto - 0.35, z - 3 - i * 7));
+}
+
+// ============================================================================================
+//  Público: miles de aficionados colocados sobre las gradas del .glb (rayos desde arriba)
+// ============================================================================================
+const U = { tiempo: { value: 0 }, excita: { value: 0.1 }, ola: { value: 0 }, olaAng: { value: 0 }, flash: { value: 0.2 }, lint: { value: 0 } };
+let PUBLICO = null, FLASHES = null, LAMPARAS = null;
+
+function figuraAficionado() {
+  const caja = (w, h, d, x, y, z, cab, brazo) => {
+    const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z);
+    const n = g.attributes.position.count, ca = new Float32Array(n).fill(cab), br = new Float32Array(n);
+    if (brazo) for (let i = 0; i < n; i++) br[i] = g.attributes.position.getY(i) > y ? 1 : 0;
+    g.setAttribute('aCab', new THREE.BufferAttribute(ca, 1)); g.setAttribute('aBrazo', new THREE.BufferAttribute(br, 1));
+    return g;
+  };
+  return mergeGeometries([
+    caja(0.44, 1.05, 0.28, 0, 0.52, 0, 0, false),
+    caja(0.26, 0.28, 0.26, 0, 1.2, 0, 1, false),
+    caja(0.1, 0.56, 0.1, -0.27, 1.26, 0, 0, true),
+    caja(0.1, 0.56, 0.1, 0.27, 1.26, 0, 0, true),
+  ]);
+}
+
+// Mosaicos (tifos) de las gradas de los fondos: colores tomados de un dibujo
+function crearTifo(lineas, fondo, tinta, detalle) {
+  const [c, g] = lienzo(600, 460);  // 60 m de ancho (z) × 46 m de alto (y), 10 px por metro
+  g.fillStyle = fondo; g.fillRect(0, 0, 600, 460);
+  // tercer anfiteatro (y 28-44): la palabra grande
+  g.fillStyle = tinta; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '900 150px Arial Black, Arial, sans-serif';
+  g.fillText(lineas[0], 300, 460 - 360, 580);
+  // segundo anfiteatro (y 15-23)
+  g.font = '900 80px Arial Black, Arial, sans-serif'; g.fillStyle = detalle;
+  g.fillText(lineas[1], 300, 460 - 190, 560);
+  // primer anfiteatro: rayas
+  for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? tinta : detalle; g.fillRect(i * 50, 460 - 105, 50, 105); }
+  return g.getImageData(0, 0, 600, 460);
+}
+
+async function llenarGradas(alProgreso) {
+  if (PUBLICO) { scene.remove(PUBLICO, FLASHES, LAMPARAS); PUBLICO.geometry.dispose(); }
+  let bvh = null;
+  try { bvh = await import('three-mesh-bvh'); } catch (e) { console.warn('Sin three-mesh-bvh: el público se coloca más despacio', e); }
+  if (bvh) { THREE.BufferGeometry.prototype.computeBoundsTree = bvh.computeBoundsTree; THREE.Mesh.prototype.raycast = bvh.acceleratedRaycast; }
+  const gradas = EST.mallas.filter((o) => !NO_GRADA.test((o.material && o.material.name) || '') || /respaldo|contrahuella|grada|asiento|seat|stand/i.test(o.material.name || ''));
+  const techos = EST.mallas.filter((o) => /cubierta|roof|techo/i.test((o.material && o.material.name) || ''));
+  if (bvh) for (const o of [...gradas, ...techos]) { try { o.geometry.computeBoundsTree(); } catch (e) { /* sin acelerar */ } }
+  const ray = new THREE.Raycaster(); ray.firstHitOnly = false;
+  const abajo = new V3(0, -1, 0), n = new V3(), origen = new V3();
+
+  // Borde interior del techo (para la corona de focos)
+  const borde = (dx, dz) => {
+    for (let d = 35; d < 140; d += 1) {
+      origen.set(dx * d, 25, dz * d); ray.set(origen, new V3(0, 1, 0));
+      const h = ray.intersectObjects(techos, false)[0];
+      if (h) return [d, h.point.y];
+    }
+    return null;
+  };
+  const bx = borde(1, 0), bz = borde(0, 1);
+  if (bx && bz) EST.techo = { ax: bx[0], az: bz[0], y: Math.min(bx[1], bz[1]) - 1.2 };
+
+  const caja = EST.caja, alto = caja.max.y;
+  const max = parseInt(PARAMS.get('publico')) || (MOVIL ? 17000 : 42000), paso = clamp(Math.sqrt(34000 / max), 0.8, 2.4);
+  const puntos = [];
+  const inicio = performance.now();
+  const tun = EST.tunel;
+  let ultimoAviso = 0;
+  // las columnas en orden aleatorio: si el móvil es lento y se corta por tiempo, el público queda repartido
+  const columnas = [];
+  for (let x = caja.min.x; x < caja.max.x; x += paso) columnas.push(x);
+  for (let i = columnas.length - 1; i > 0; i--) { const j = Math.floor(azar() * (i + 1)); [columnas[i], columnas[j]] = [columnas[j], columnas[i]]; }
+  let hechas = 0;
+  for (const x of columnas) {
+    for (let z = caja.min.z; z < caja.max.z; z += paso) {
+      if (Math.abs(x) < 60 && Math.abs(z) < 41.5) continue;
+      const px = x + (azar() - 0.5) * paso * 0.7, pz = z + (azar() - 0.5) * paso * 0.7;
+      origen.set(px, Math.min(alto - 2, 53.5), pz); ray.set(origen, abajo);
+      const hits = ray.intersectObjects(gradas, false);
+      for (const h of hits) {
+        if (h.point.y < 0.9 || h.point.y > 46 || !h.face) continue;
+        n.copy(h.face.normal).transformDirection(h.object.matrixWorld);
+        if (n.y < 0.6) continue;
+        if (Math.abs(h.point.x - tun.x) < 5 && h.point.z < tun.z + 1 && h.point.z > tun.z - LARGO_TUNEL && h.point.y < 5) continue;
+        puntos.push(h.point.x, h.point.y, h.point.z);
+      }
+    }
+    hechas++;
+    if (performance.now() - ultimoAviso > 120) { ultimoAviso = performance.now(); alProgreso && alProgreso(hechas / columnas.length); await new Promise((r) => setTimeout(r, 0)); }
+    if (performance.now() - inicio > 12000) break;   // en móviles lentos, no esperamos más
+  }
+  console.log('Gradas:', (performance.now() - inicio | 0) + ' ms', hechas + '/' + columnas.length, 'columnas', bvh ? 'con BVH' : 'sin BVH');
+  // si hay demasiados, se reparten al azar
+  let total = puntos.length / 3;
+  const orden = [...Array(total).keys()];
+  for (let i = orden.length - 1; i > 0; i--) { const j = Math.floor(azar() * (i + 1)); [orden[i], orden[j]] = [orden[j], orden[i]]; }
+  total = Math.min(total, max);
+  console.log('Público:', total, 'aficionados');
+
+  const geo = figuraAficionado();
+  const mat = new THREE.MeshLambertMaterial();
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, { uTime: U.tiempo, uExcita: U.excita, uOla: U.ola, uOlaAng: U.olaAng });
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', `#include <common>
+        attribute vec3 aDat; attribute float aCab; attribute float aBrazo;
+        uniform float uTime, uExcita, uOla, uOlaAng;`)
+      .replace('#include <color_vertex>', `
+        #ifdef USE_INSTANCING_COLOR
+          vec3 piel = mix(vec3(0.93, 0.74, 0.6), vec3(0.4, 0.26, 0.16), fract(aDat.y * 7.31) * fract(aDat.z * 3.7));
+          vColor = mix(instanceColor.rgb, piel, aCab);
+        #endif`)
+      .replace('#include <begin_vertex>', `
+        vec3 transformed = vec3(position);
+        float dA = abs(mod(aDat.x - uOlaAng + 3.14159265, 6.2831853) - 3.14159265);
+        float ola = exp(-dA * dA * 16.0) * uOla;
+        float salta = step(aDat.y, 0.2 + 0.7 * uExcita) * uExcita;
+        float s = max(0.0, sin(uTime * (6.0 + aDat.z * 4.5) + aDat.y * 60.0));
+        float brazos = clamp(max(salta * step(aDat.z, 0.8) * (0.55 + 0.45 * sin(uTime * 7.0 + aDat.z * 30.0)), ola * 1.3), 0.0, 1.0);
+        transformed.y -= aBrazo * (1.0 - brazos) * 0.53;
+        transformed.x += aBrazo * brazos * sin(uTime * 9.0 + aDat.y * 40.0) * 0.08 * sign(position.x);
+        transformed.y += salta * s * (0.1 + 0.22 * aDat.z) + ola * 0.5;`);
+  };
+  const pub = new THREE.InstancedMesh(geo, mat, total);
+  pub.frustumCulled = false;
+  const dat = new Float32Array(total * 3);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), esc = new V3(), pos = new V3(), col = new THREE.Color(), eje = new V3(0, 1, 0);
+  const PALETA = [['#f2f2f2', 40], ['#e6e6ea', 12], ['#3b1e8a', 9], ['#d4a237', 8], ['#18264f', 10], ['#151515', 8], ['#7a0f1f', 3], ['#6fa8dc', 4], ['#9a9a9a', 6]];
+  const sumaP = PALETA.reduce((a, b) => a + b[1], 0);
+  const colorAzar = () => { let r = azar() * sumaP; for (const [c, w] of PALETA) { if ((r -= w) <= 0) return c; } return '#ffffff'; };
+  const tifoA = crearTifo(['MANUEL', '★ 10 ★'], '#2c1470', '#ffffff', '#e2b545');
+  const tifoB = crearTifo(['¡VAMOS!', 'MANUEL'], '#f4f4f4', '#2c1470', '#d4a237');
+  const deTifo = (img, u, v) => { const px = clamp(Math.floor(u * img.width), 0, img.width - 1), py = clamp(Math.floor((1 - v) * img.height), 0, img.height - 1), k = (py * img.width + px) * 4; return col.setRGB(img.data[k] / 255, img.data[k + 1] / 255, img.data[k + 2] / 255, THREE.SRGBColorSpace); };
+  const escala = MOVIL ? 1.22 : 1.1;
+  const flashes = [];
+  for (let k = 0; k < total; k++) {
+    const i = orden[k], x = puntos[i * 3], y = puntos[i * 3 + 1], z = puntos[i * 3 + 2];
+    pos.set(x, y, z);
+    q.setFromAxisAngle(eje, Math.atan2(-x, -z) + (azar() - 0.5) * 0.4);
+    esc.setScalar(escala * (0.9 + azar() * 0.2));
+    m4.compose(pos, q, esc); pub.setMatrixAt(k, m4);
+    // los fondos: +X lleva MANUEL / 10 y -X ¡VAMOS! (visto desde el centro del campo: izquierda = -z en el fondo +X)
+    if (x > 58 && Math.abs(z) < 30) deTifo(tifoA, (z + 30) / 60, y / 46);
+    else if (x < -58 && Math.abs(z) < 30) deTifo(tifoB, (30 - z) / 60, y / 46);
+    else col.set(colorAzar());
+    pub.setColorAt(k, col);
+    dat[k * 3] = Math.atan2(z, x); dat[k * 3 + 1] = azar(); dat[k * 3 + 2] = azar();
+    if (azar() < (MOVIL ? 0.05 : 0.06)) flashes.push(x, y + 1.45 * escala, z);
+  }
+  geo.setAttribute('aDat', new THREE.InstancedBufferAttribute(dat, 3));
+  pub.instanceMatrix.needsUpdate = true; if (pub.instanceColor) pub.instanceColor.needsUpdate = true;
+  scene.add(pub);
+  PUBLICO = pub;
+
+  // Flashes de las cámaras y linternas de los móviles
+  const gF = new THREE.BufferGeometry(), nf = flashes.length / 3, rr = new Float32Array(nf);
+  for (let i = 0; i < nf; i++) rr[i] = azar();
+  gF.setAttribute('position', new THREE.Float32BufferAttribute(flashes, 3));
+  gF.setAttribute('aR', new THREE.BufferAttribute(rr, 1));
+  FLASHES = new THREE.Points(gF, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uTime: U.tiempo, uFlash: U.flash, uLint: U.lint, uMapa: { value: texPunto }, uEscala: U_ESCALA },
+    vertexShader: `attribute float aR; uniform float uTime, uFlash, uLint, uEscala; varying float vA;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        float f = pow(max(0.0, sin(uTime * (0.6 + aR * 1.7) * 6.2831 + aR * 300.0)), 90.0) * uFlash * step(0.35, aR);
+        float l = uLint * step(aR, 0.55) * (0.75 + 0.25 * sin(uTime * 2.0 + aR * 50.0));
+        vA = max(f * 2.5, l * 0.9);
+        gl_PointSize = min(64.0, (0.5 + f * 1.4) * uEscala / -mv.z);
+        gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: 'uniform sampler2D uMapa; varying float vA; void main(){ float a = texture2D(uMapa, gl_PointCoord).a; gl_FragColor = vec4(vec3(1.6, 1.65, 1.8) * vA, a * min(vA, 1.0)); }',
+  }));
+  FLASHES.frustumCulled = false;
+  scene.add(FLASHES);
+
+  // Corona de focos bajo el borde del techo
+  const { ax, az, y } = EST.techo, lam = [];
+  for (let k = 0; k < 200; k++) {
+    // rectángulo de esquinas redondeadas (superelipse)
+    const a = k / 200 * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
+    lam.push(Math.sign(c) * Math.pow(Math.abs(c), 0.3) * ax, y, Math.sign(sn) * Math.pow(Math.abs(sn), 0.3) * az);
+  }
+  const gL = new THREE.BufferGeometry(); gL.setAttribute('position', new THREE.Float32BufferAttribute(lam, 3));
+  LAMPARAS = new THREE.Points(gL, new THREE.PointsMaterial({ map: texPunto, color: new THREE.Color(3.2, 3.1, 2.9), size: 2.6, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  scene.add(LAMPARAS);
+}
+const U_ESCALA = { value: 600 };
+
+// ============================================================================================
+//  Ciudad alrededor y focos que barren el cielo
+// ============================================================================================
+{
+  const [c, g] = lienzo(128, 256);
+  g.fillStyle = '#07080c'; g.fillRect(0, 0, 128, 256);
+  const r = prng(9);
+  for (let y = 4; y < 256; y += 9) for (let x = 3; x < 128; x += 8) {
+    if (r() < 0.42) { g.fillStyle = r() < 0.75 ? `rgba(255,${200 + r() * 40 | 0},${120 + r() * 60 | 0},${0.55 + r() * 0.45})` : 'rgba(170,200,255,.8)'; g.fillRect(x, y, 5, 5); }
+  }
+  const tv = new THREE.CanvasTexture(c); tv.colorSpace = THREE.SRGBColorSpace;
+  const n = MOVIL ? 380 : 750;
+  const geo = new THREE.BoxGeometry(1, 1, 1); geo.translate(0, 0.5, 0);
+  const ed = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: 0x111620, roughness: 0.9, emissive: 0xffffff, emissiveMap: tv, emissiveIntensity: 0.9 }), n);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new V3(), p = new V3(), rr = prng(33);
+  for (let i = 0; i < n; i++) {
+    const a = rr() * Math.PI * 2, d = 240 + Math.pow(rr(), 0.7) * 900;
+    p.set(Math.cos(a) * d, -0.4, Math.sin(a) * d);
+    q.setFromAxisAngle(new V3(0, 1, 0), rr() * Math.PI);
+    e.set(18 + rr() * 30, 12 + Math.pow(rr(), 2.2) * 80, 18 + rr() * 30);
+    m.compose(p, q, e); ed.setMatrixAt(i, m);
+  }
+  // cuatro rascacielos al norte de la Castellana
+  for (let k = 0; k < 4; k++) { p.set(-950 - k * 10, -0.4, -220 + k * 75); e.set(40, 220 + k * 8, 40); q.identity(); m.compose(p, q, e); ed.setMatrixAt(k, m); }
+  scene.add(ed);
+}
+const FAROS = [];
+{
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: 'varying vec2 vUv; void main(){ float a = pow(1.0 - vUv.y, 1.6) * 0.16 * (0.6 + 0.4 * sin(vUv.x * 6.2831)); gl_FragColor = vec4(vec3(0.75, 0.82, 1.0), a); }',
+  });
+  const geo = new THREE.CylinderGeometry(14, 0.8, 700, 20, 1, true); geo.translate(0, 350, 0);
+  for (const [x, z] of [[-175, -150], [175, -150], [175, 150], [-175, 150]]) {
+    const f = new THREE.Mesh(geo, mat); f.position.set(x, 0, z); scene.add(f); FAROS.push(f);
+  }
+}
+
+// ============================================================================================
+//  Partículas: fuego, chispas, fuegos artificiales y humo
+// ============================================================================================
+class Particulas {
+  constructor(n, aditivo) {
+    this.n = n; this.i = 0;
+    const F = (k) => new Float32Array(n * k);
+    Object.assign(this, { pos: F(3), col: F(3), tam: F(1), alfa: F(1), vel: F(3), vida: F(1), dur: F(1), c0: F(3), c1: F(3), s0: F(1), crece: F(1), grav: F(1), roce: F(1), a0: F(1), parp: F(1), vivo: new Uint8Array(n) });
+    const g = new THREE.BufferGeometry();
+    const at = (nombre, arr, k) => { const a = new THREE.BufferAttribute(arr, k); a.setUsage(THREE.DynamicDrawUsage); g.setAttribute(nombre, a); return a; };
+    this.aPos = at('position', this.pos, 3); this.aCol = at('aColor', this.col, 3); this.aTam = at('aSize', this.tam, 1); this.aAlf = at('aAlpha', this.alfa, 1);
+    this.obj = new THREE.Points(g, new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: aditivo ? THREE.AdditiveBlending : THREE.NormalBlending,
+      uniforms: { uEscala: U_ESCALA, uMapa: { value: texPunto } },
+      vertexShader: `attribute vec3 aColor; attribute float aSize; attribute float aAlpha; uniform float uEscala; varying vec3 vC; varying float vA;
+        void main(){ vC = aColor; vA = aAlpha; vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = aAlpha <= 0.0 ? 0.0 : min(256.0, aSize * uEscala / max(0.1, -mv.z)); gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `uniform sampler2D uMapa; varying vec3 vC; varying float vA;
+        void main(){ float a = texture2D(uMapa, gl_PointCoord).a * vA; if (a < 0.003) discard; gl_FragColor = vec4(vC, a); }`,
+    }));
+    this.obj.frustumCulled = false;
+    this.obj.renderOrder = 5;
+    scene.add(this.obj);
+  }
+  emitir(p, v, o) {
+    const i = this.i; this.i = (this.i + 1) % this.n;
+    this.pos.set([p.x, p.y, p.z], i * 3); this.vel.set([v.x, v.y, v.z], i * 3);
+    this.c0.set(o.c0, i * 3); this.c1.set(o.c1 || o.c0, i * 3);
+    this.vida[i] = 0; this.dur[i] = o.dur; this.s0[i] = o.tam; this.crece[i] = o.crece || 0; this.grav[i] = o.grav || 0;
+    this.roce[i] = o.roce || 0; this.a0[i] = o.alfa == null ? 1 : o.alfa; this.parp[i] = o.parp ? 1 : 0; this.vivo[i] = 1;
+  }
+  actualizar(dt, t) {
+    for (let i = 0; i < this.n; i++) {
+      if (!this.vivo[i]) continue;
+      this.vida[i] += dt;
+      const f = this.vida[i] / this.dur[i];
+      if (f >= 1) { this.vivo[i] = 0; this.alfa[i] = 0; continue; }
+      const k = i * 3, r = Math.exp(-this.roce[i] * dt);
+      this.vel[k + 1] += this.grav[i] * dt;
+      for (let j = 0; j < 3; j++) { this.vel[k + j] *= r; this.pos[k + j] += this.vel[k + j] * dt; }
+      const s = suave(f);
+      for (let j = 0; j < 3; j++) this.col[k + j] = this.c0[k + j] + (this.c1[k + j] - this.c0[k + j]) * s;
+      let a = this.a0[i] * Math.pow(1 - f, 1.3) * Math.min(1, this.vida[i] * 20);
+      if (this.parp[i] && f > 0.45) a *= 0.35 + 0.65 * (Math.sin(t * 47 + i * 1.7) > 0 ? 1 : 0.15);
+      this.alfa[i] = a; this.tam[i] = this.s0[i] * (1 + this.crece[i] * f);
+    }
+    this.aPos.needsUpdate = this.aCol.needsUpdate = this.aTam.needsUpdate = this.aAlf.needsUpdate = true;
+  }
+}
+const FUEGO = new Particulas(MOVIL ? 3500 : 7000, true);
+const HUMO = new Particulas(MOVIL ? 500 : 900, false);
+const emisores = [], cohetes = [];
+const _p = new V3(), _v = new V3();
+const PALETA_FUEGOS = [[2.6, 2.0, 0.9], [2.4, 2.4, 2.4], [1.5, 0.8, 2.8], [0.9, 1.6, 2.8], [2.8, 1.0, 1.6], [2.8, 2.3, 1.2]];
+function llamarada(x, z, dur = 0.6) { emisores.push({ tipo: 'fuego', x, z, hasta: 0, dur, t: 0 }); }
+function chorroCO2(x, z) { emisores.push({ tipo: 'co2', x, z, dur: 1.1, t: 0 }); }
+function fuente(x, z, dur = 2.2) { emisores.push({ tipo: 'fuente', x, z, dur, t: 0 }); }
+function cohete(x, y, z, alto) { cohetes.push({ p: new V3(x, y, z), v: new V3((azar() - 0.5) * 4, 0, (azar() - 0.5) * 4), dur: 1.1, t: 0, alto, col: PALETA_FUEGOS[Math.floor(azar() * PALETA_FUEGOS.length)] }); }
+function estallido(p, col) {
+  const n = MOVIL ? 90 : 170, vel = 15 + azar() * 6;
+  for (let i = 0; i < n; i++) {
+    const u = azar() * 2 - 1, a = azar() * Math.PI * 2, r = Math.sqrt(1 - u * u);
+    _v.set(Math.cos(a) * r, u, Math.sin(a) * r).multiplyScalar(vel * (0.85 + azar() * 0.3));
+    FUEGO.emitir(p, _v, { c0: [3.5, 3.4, 3.2], c1: col, dur: 1.8 + azar() * 0.9, tam: 1.3, crece: -0.4, grav: -4, roce: 1.1, parp: true });
+  }
+  for (let i = 0; i < 6; i++) { _v.set(0, 0, 0); FUEGO.emitir(p, _v, { c0: [2.5, 2.4, 2.2], c1: col, dur: 0.3, tam: 10, crece: 0.6, alfa: 0.5 }); }
+}
+function actualizarEfectos(dt, t) {
+  for (let k = emisores.length - 1; k >= 0; k--) {
+    const e = emisores[k]; e.t += dt;
+    if (e.t > e.dur) { emisores.splice(k, 1); continue; }
+    const n = Math.ceil(dt * (e.tipo === 'fuego' ? (MOVIL ? 130 : 220) : e.tipo === 'co2' ? 180 : 260));
+    for (let i = 0; i < n; i++) {
+      _p.set(e.x + (azar() - 0.5) * 0.35, 0.3, e.z + (azar() - 0.5) * 0.35);
+      if (e.tipo === 'fuego') {
+        _v.set((azar() - 0.5) * 1.6, 9 + azar() * 7, (azar() - 0.5) * 1.6);
+        FUEGO.emitir(_p, _v, { c0: [1.9, 1.5, 0.8], c1: [0.9, 0.2, 0.03], dur: 0.55 + azar() * 0.45, tam: 0.65 + azar() * 0.45, crece: 2.0, grav: -3, roce: 1.4, alfa: 0.55 });
+      } else if (e.tipo === 'co2') {
+        _v.set((azar() - 0.5) * 1.2, 12 + azar() * 5, (azar() - 0.5) * 1.2);
+        HUMO.emitir(_p, _v, { c0: [0.85, 0.88, 0.95], dur: 1.8 + azar(), tam: 0.6, crece: 7, roce: 2.2, alfa: 0.22 });
+      } else {
+        _v.set((azar() - 0.5) * 2.2, 6 + azar() * 4, (azar() - 0.5) * 2.2);
+        FUEGO.emitir(_p, _v, { c0: [3.4, 3.1, 2.4], c1: [2.4, 1.3, 0.4], dur: 0.9 + azar() * 0.5, tam: 0.14, grav: -9.8, roce: 0.4, parp: true });
+      }
+    }
+  }
+  for (let k = cohetes.length - 1; k >= 0; k--) {
+    const c = cohetes[k]; c.t += dt;
+    const vy = c.alto / c.dur * 1.6 * (1 - c.t / c.dur);
+    c.p.x += c.v.x * dt; c.p.z += c.v.z * dt; c.p.y += vy * dt;
+    _v.set((azar() - 0.5), -2, (azar() - 0.5));
+    FUEGO.emitir(c.p, _v, { c0: [3, 2, 0.9], c1: [0.8, 0.3, 0.05], dur: 0.5, tam: 0.6, crece: -0.5 });
+    if (c.t >= c.dur) { estallido(c.p, c.col); cohetes.splice(k, 1); }
+  }
+  FUEGO.actualizar(dt, t); HUMO.actualizar(dt, t);
+}
+
+// Confeti blanco, oro y morado
+const CONFETI = (() => {
+  const n = MOVIL ? 700 : 1500;
+  const m = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.08, 0.12), new THREE.MeshLambertMaterial({ side: THREE.DoubleSide }), n);
+  m.frustumCulled = false;
+  const cols = ['#ffffff', '#f3d27a', '#d4a237', '#5b34b8', '#ffffff'].map((c) => new THREE.Color(c));
+  const d = [];
+  for (let i = 0; i < n; i++) { m.setColorAt(i, cols[i % cols.length]); d.push({ p: new V3(0, -50, 0), v: new V3(), r: new V3(azar() * 6, azar() * 6, azar() * 6), w: new V3(azar() * 8 - 4, azar() * 8 - 4, azar() * 8 - 4), vivo: false }); }
+  m.instanceColor.needsUpdate = true;
+  scene.add(m);
+  const e = new THREE.Euler(), q = new THREE.Quaternion(), s = new V3(1, 1, 1), M4 = new THREE.Matrix4();
+  let j = 0;
+  return {
+    soltar(centro, cuantos) {
+      for (let k = 0; k < cuantos; k++) { const c = d[j]; j = (j + 1) % n; c.vivo = true; c.p.set(centro.x + (azar() - 0.5) * 30, 16 + azar() * 16, centro.z + (azar() - 0.5) * 30); c.v.set((azar() - 0.5) * 1.5, -1 - azar(), (azar() - 0.5) * 1.5); }
+    },
+    actualizar(dt, t) {
+      for (let i = 0; i < n; i++) {
+        const c = d[i];
+        if (c.vivo) {
+          c.p.x += (c.v.x + Math.sin(t * 2 + i) * 0.6) * dt; c.p.y += c.v.y * dt; c.p.z += (c.v.z + Math.cos(t * 1.7 + i) * 0.6) * dt;
+          c.r.addScaledVector(c.w, dt);
+          if (c.p.y < 0.02) { c.p.y = 0.02; c.vivo = false; c.r.x = -Math.PI / 2; c.r.y = 0; }
+        }
+        e.set(c.r.x, c.r.y, c.r.z); q.setFromEuler(e); M4.compose(c.p, q, s); m.setMatrixAt(i, M4);
+      }
+      m.instanceMatrix.needsUpdate = true;
+    },
+    reiniciar() { d.forEach((c) => { c.vivo = false; c.p.set(0, -50, 0); }); },
+  };
+})();
+
+// ============================================================================================
+//  Manuel
+// ============================================================================================
+const MAN = { grupo: new THREE.Group(), base: new THREE.Group(), modelo: null, mixer: null, acc: {}, actual: null, h: {}, reposo: [],
+  pos: new V3(), v: 0, rumbo: 0, wI: 0, wD: 0, wU: 0, salto: 0, alto: 1.25 };
+MAN.grupo.add(MAN.base); scene.add(MAN.grupo);
+const ALIAS = {
+  brazoI: ['leftarm', 'brazol', 'upperarml', 'larm', 'lupperarm', 'armleft', 'leftupperarm'],
+  antebrazoI: ['leftforearm', 'antebrazol', 'forearml', 'lowerarml', 'lforearm', 'leftlowerarm'],
+  manoI: ['lefthand', 'manol', 'handl', 'lhand'],
+  brazoD: ['rightarm', 'brazor', 'upperarmr', 'rarm', 'rupperarm', 'armright', 'rightupperarm'],
+  antebrazoD: ['rightforearm', 'antebrazor', 'forearmr', 'lowerarmr', 'rforearm', 'rightlowerarm'],
+  manoD: ['righthand', 'manor', 'handr', 'rhand'],
+  cadera: ['hips', 'raiz', 'pelvis', 'root'],
+};
+const normaliza = (n) => n.toLowerCase().replace(/mixamorig\d*/, '').replace(/[^a-z]/g, '');
+
+function montarManuel(gltf, deRepuesto) {
+  MAN.base.clear();
+  const modelo = gltf.scene;
+  if (deRepuesto) {
+    // el niño de repuesto (un dibujo inventado): sin casco y con la equipación blanca
+    const fuera = []; modelo.traverse((o) => { if (/^casco/i.test(o.name) || (o.isMesh && /casco|visera|franja/i.test(o.material.name))) fuera.push(o); });
+    fuera.forEach((o) => o.parent && o.parent.remove(o));
+  }
+  modelo.traverse((o) => {
+    if (o.isMesh) {
+      o.castShadow = true; o.frustumCulled = false;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      o.material = mats.map((m) => {
+        const c = m.clone();
+        if ('metalness' in c) { c.metalness = 0; c.metalnessMap = null; }
+        if (deRepuesto) {
+          if (/camiseta|arriba|shirt/i.test(c.name)) c.color.set('#f7f7f7');
+          else if (/pantalon|short/i.test(c.name)) c.color.set('#f2f2f2');
+          else if (/zapa|shoe/i.test(c.name)) c.color.set('#141414');
+        }
+        return c;
+      });
+      if (o.material.length === 1) o.material = o.material[0];
+    }
+  });
+  const h = {}, todos = {};
+  modelo.traverse((o) => { if (o.isBone) todos[normaliza(o.name)] = o; });
+  for (const [clave, nombres] of Object.entries(ALIAS)) h[clave] = nombres.map((n) => todos[n]).find(Boolean) || null;
+  MAN.h = h;
+  // quitamos el avance de las animaciones (Manuel lo movemos nosotros); dejamos el balanceo vertical
+  const caderas = h.cadera ? h.cadera.name : null;
+  for (const clip of gltf.animations) {
+    for (const tr of clip.tracks) {
+      if (caderas && tr.name === caderas + '.position') {
+        const v = tr.values; const x0 = v[0], z0 = v[2];
+        for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; }
+      }
+    }
+  }
+  // tamaño: 1,25 m sin contar los brazos (el modelo original puede tener un brazo levantado)
+  MAN.base.add(modelo);
+  modelo.updateMatrixWorld(true);
+  let y0 = Infinity, y1 = -Infinity;
+  const v = new V3();
+  modelo.traverse((o) => {
+    if (!o.isSkinnedMesh) return;
+    const p = o.geometry.attributes.position, si = o.geometry.attributes.skinIndex, sw = o.geometry.attributes.skinWeight, huesos = o.skeleton.bones;
+    const paso = Math.max(1, Math.floor(p.count / 8000));
+    for (let i = 0; i < p.count; i += paso) {
+      let mejor = 0, w = -1;
+      for (let k = 0; k < 4; k++) { const wk = sw.getComponent(i, k); if (wk > w) { w = wk; mejor = si.getComponent(i, k); } }
+      const nb = ((huesos[mejor] && huesos[mejor].name) || '').toLowerCase();
+      if (/arm|hand|mano|brazo|finger|thumb|dedo|index|middle|ring|pinky|ball|balon/.test(nb)) continue;
+      o.getVertexPosition(i, v); v.applyMatrix4(o.matrixWorld);
+      y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y);
+    }
+  });
+  if (!isFinite(y0)) { const c = new THREE.Box3().setFromObject(modelo); y0 = c.min.y; y1 = c.max.y; }
+  const escala = MAN.alto / (y1 - y0);
+  modelo.scale.multiplyScalar(escala);
+  modelo.position.y = -y0 * escala;
+  // hacia dónde mira el modelo: lo giramos para que mire a +Z
+  modelo.updateMatrixWorld(true);
+  if (h.brazoI && h.brazoD) {
+    const a = h.brazoI.getWorldPosition(new V3()), b = h.brazoD.getWorldPosition(new V3());
+    const frente = new V3().crossVectors(a.sub(b).setY(0).normalize(), new V3(0, 1, 0));
+    if (frente.z < 0) modelo.rotation.y += Math.PI;
+  }
+  MAN.modelo = modelo;
+  MAN.reposo = [];
+  modelo.traverse((o) => { if (o.isBone) MAN.reposo.push([o, o.quaternion.clone()]); });
+  MAN.mixer = new THREE.AnimationMixer(modelo);
+  MAN.acc = {}; MAN.actual = null;
+  const buscar = (exactos, re) => gltf.animations.find((c) => exactos.includes(c.name.toLowerCase())) || gltf.animations.find((c) => re.test(c.name));
+  const clips = {
+    idle: buscar(['idle', 'reposo', 'stand'], /idle|reposo|stand|breath/i) || gltf.animations[0],
+    walk: buscar(['walk', 'andar', 'caminar'], /walk|andar|camin/i),
+    run: buscar(['run', 'correr', 'jog'], /^(?!.*pertiga).*(run|correr|jog)/i),
+  };
+  for (const [k, c] of Object.entries(clips)) if (c) MAN.acc[k] = MAN.mixer.clipAction(c);
+  if (!MAN.acc.walk) MAN.acc.walk = MAN.acc.run || MAN.acc.idle;
+  if (!MAN.acc.run) MAN.acc.run = MAN.acc.walk;
+}
+function montarMuneco() {
+  // por si no hay ningún modelo: un muñeco sencillo
+  MAN.base.clear();
+  const m = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.6 });
+  const cuerpo = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.55, 6, 12), m); cuerpo.position.y = 0.62; cuerpo.castShadow = true;
+  const cab = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), new THREE.MeshStandardMaterial({ color: 0xe9bf9b })); cab.position.y = 1.08; cab.castShadow = true;
+  MAN.base.add(cuerpo, cab); MAN.modelo = null; MAN.mixer = null; MAN.h = {};
+}
+
+// Recorrido: [tiempo, z relativa a la boca del túnel]
+function rutaZ(t) {
+  const z0 = EST.tunel.z;
+  const R = [[0, -11.5], [8, -11.5], [16, -1.5], [21, 9], [B(11), 9], [B(13) + 0.6, 31], [B(14) - 0.6, 35.5], [1e9, 35.5]];
+  for (let i = 1; i < R.length; i++) if (t < R[i][0]) { const [t0, a] = R[i - 1], [t1, b] = R[i]; return z0 + lerp(a, b, (t - t0) / (t1 - t0)); }
+  return z0 + R[R.length - 1][1];
+}
+// Saludos: I = mano izquierda, D = derecha, A = las dos, U = brazos arriba
+const SALUDOS = [[18, 20.6, 'I'], [B(8) + 0.3, B(9) - 0.2, 'D'], [B(9) + 0.3, B(10) - 0.1, 'I'], [B(10) + 0.2, B(11) - 0.4, 'U'],
+  [B(11) + 1.2, B(12) + 2.2, 'I'], [B(14), B(14, 3), 'D'], [B(15) - 0.6, B(15, 3), 'I'], [B(16) - 0.6, B(16, 3) + 0.4, 'D'],
+  [B(17) - 0.5, B(18) - 0.4, 'U'], [B(18) - 0.2, TITULO - 0.3, 'A'], [TITULO - 0.1, 1e9, 'U']];
+function rumboGuion(t) {
+  if (t >= B(8) && t < B(9)) return -1.0;
+  if (t >= B(9) && t < B(10)) return 1.0;
+  if (t >= B(14) - 0.3 && t < B(17)) return -Math.PI * 2 * suave2(entre(t, B(14) - 0.3, B(17) - 0.6));
+  return 0;
+}
+const _a = new V3(), _b = new V3(), _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion();
+function apuntar(hueso, hijo, dir, peso) {
+  if (!hueso || !hijo || !hueso.parent || peso < 0.005) return;
+  hueso.getWorldPosition(_a); hijo.getWorldPosition(_b);
+  const d = _b.sub(_a).normalize();
+  _q1.setFromUnitVectors(d, dir);
+  hueso.getWorldQuaternion(_q2);
+  hueso.parent.getWorldQuaternion(_q3);
+  _q3.invert().multiply(_q1.multiply(_q2));
+  hueso.quaternion.slerp(_q3, peso);
+  hueso.updateMatrixWorld(true);
+}
+function cambiarAnim(nombre, ts) {
+  const a = MAN.acc[nombre]; if (!a) return;
+  if (MAN.actual !== a) {
+    a.reset().setEffectiveWeight(1).play();
+    if (MAN.actual) MAN.actual.crossFadeTo(a, 0.35, false);
+    MAN.actual = a;
+  }
+  a.timeScale = ts;
+}
+const _lat = new V3(), _fr = new V3(), _up = new V3(0, 1, 0), _t1 = new V3(), _t2 = new V3();
+function actualizarManuel(t, dt, saltoTiempo) {
+  const objetivoZ = rutaZ(t), ox = EST.tunel.x;
+  const antes = MAN.pos.clone();
+  if (saltoTiempo) MAN.pos.set(ox, 0, objetivoZ);
+  else { const k = 1 - Math.exp(-dt * 3.2); MAN.pos.x = lerp(MAN.pos.x, ox, k); MAN.pos.z = lerp(MAN.pos.z, objetivoZ, k); }
+  const vel = saltoTiempo ? 0 : antes.distanceTo(MAN.pos) / Math.max(dt, 1e-4);
+  MAN.v = lerp(MAN.v, vel, 1 - Math.exp(-dt * 6));
+  const r = MAN.v > 0.35 ? 0 : rumboGuion(t);
+  if (t >= B(14) - 0.3 && t < B(17)) MAN.rumbo = r; else MAN.rumbo += dif(MAN.rumbo, r) * (1 - Math.exp(-dt * 4));
+  // saludos
+  let oI = 0, oD = 0, oU = 0, salto = 0;
+  for (const [a, b, tipo] of SALUDOS) if (t >= a && t < b) {
+    if (tipo === 'I' || tipo === 'A') oI = 1;
+    if (tipo === 'D' || tipo === 'A') oD = 1;
+    if (tipo === 'U') { oU = 1; if (MAN.v < 0.4 && t < TITULO) salto = Math.abs(Math.sin((t - a) * Math.PI * 1.5)) * 0.2; }
+  }
+  const kw = 1 - Math.exp(-dt * 7);
+  MAN.wI = lerp(MAN.wI, oI, kw); MAN.wD = lerp(MAN.wD, oD, kw); MAN.wU = lerp(MAN.wU, oU, kw);
+  MAN.salto = lerp(MAN.salto, salto, 1 - Math.exp(-dt * 12));
+  MAN.grupo.position.set(MAN.pos.x, MAN.salto, MAN.pos.z);
+  MAN.grupo.rotation.y = MAN.rumbo;
+  if (!MAN.mixer) { MAN.base.position.y = Math.abs(Math.sin(t * 8)) * 0.04 * clamp(MAN.v, 0, 1); return; }
+  if (MAN.v < 0.25) cambiarAnim('idle', 1);
+  else if (MAN.v < 2.3) cambiarAnim('walk', clamp(MAN.v / 1.3, 0.75, 1.7));
+  else cambiarAnim('run', clamp(MAN.v / 3.3, 0.8, 1.5));
+  for (const [o, q] of MAN.reposo) o.quaternion.copy(q);
+  MAN.mixer.update(dt);
+  // brazos: saludo o celebración (se apunta cada hueso en el espacio del mundo, sirve para cualquier esqueleto)
+  const H = MAN.h; if (!H.brazoI || !H.brazoD) return;
+  MAN.grupo.updateMatrixWorld(true);
+  H.brazoI.getWorldPosition(_a); H.brazoD.getWorldPosition(_b);
+  _lat.subVectors(_a, _b).setY(0).normalize();
+  _fr.crossVectors(_lat, _up).normalize();
+  const ola = Math.sin(t * Math.PI * 2 * 2.0), bombeo = Math.sin(t * Math.PI * 2 * 1.5);
+  for (const lado of [1, -1]) {
+    const wS = lado > 0 ? MAN.wI : MAN.wD, w = Math.max(wS, MAN.wU);
+    if (w < 0.01) continue;
+    const arriba = MAN.wU > wS;
+    _t1.copy(_up).addScaledVector(_lat, lado * (arriba ? 0.32 : 0.8)).addScaledVector(_fr, arriba ? 0.12 + 0.1 * bombeo : 0.3).normalize();
+    _t2.copy(_up).addScaledVector(_lat, lado * (arriba ? 0.1 : 0.12 + 0.55 * ola)).addScaledVector(_fr, 0.15).normalize();
+    apuntar(lado > 0 ? H.brazoI : H.brazoD, lado > 0 ? H.antebrazoI : H.antebrazoD, _t1, w);
+    apuntar(lado > 0 ? H.antebrazoI : H.antebrazoD, lado > 0 ? H.manoI : H.manoD, _t2, w);
+  }
+}
+
+// ============================================================================================
+//  Cámara: los planos de la película
+// ============================================================================================
+const camPos = new V3(), camMira = new V3();
+function ajustarFov(f) {
+  const k = clamp((16 / 9) / camera.aspect, 1, 2.4);
+  return THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(f) / 2) * Math.pow(k, 0.62)));
+}
+function vibrar(t, a) { return _v.set(Math.sin(t * 1.3) * 0.6 + Math.sin(t * 3.1) * 0.3, Math.sin(t * 1.7) * 0.5 + Math.sin(t * 2.6) * 0.3, Math.cos(t * 1.1) * 0.5).multiplyScalar(a); }
+let golpe = 0;
+function plano(t) {
+  const P = MAN.pos, TZ = EST.tunel.z, TX = EST.tunel.x;
+  let fov = 40, mano = 0;
+  const dir = (r) => new V3(Math.sin(r), 0, Math.cos(r));
+  if (t < 0) { // portada: vuelo lento alrededor del estadio
+    const a = -2.3 + t * 0.025; camPos.set(Math.cos(a) * 330, 165, Math.sin(a) * 330); camMira.set(0, 0, 0); fov = 40;
+  } else if (t < B(3)) { // 1. aérea nocturna
+    const u = t / B(3), e = suave2(u), a = -2.25 + u * 1.15;
+    camPos.set(Math.cos(a) * lerp(340, 205, e), lerp(175, 62, e), Math.sin(a) * lerp(340, 205, e));
+    camMira.set(0, lerp(0, 6, u), lerp(0, TZ * 0.4, u)); fov = 38;
+  } else if (t < B(4)) { // 2. las botas en el túnel
+    const u = entre(t, B(3), B(4)); camPos.set(TX + 0.7, 0.3, P.z + 2.1 - u * 0.3); camMira.set(TX, 0.4, P.z); fov = 42; mano = 0.01;
+  } else if (t < B(5)) { // 3. de frente, en el pasillo
+    const u = entre(t, B(4), B(5)); camPos.set(TX + 0.3 - u * 0.5, 0.92, P.z + 2.5 + u * 0.4); camMira.set(TX, 0.82, P.z); fov = 40; mano = 0.012;
+  } else if (t < B(6)) { // 4. por detrás, hacia la luz del campo
+    const u = entre(t, B(5), B(6)); camPos.set(TX + 0.35, 1.12, P.z - 1.6 - u * 0.3); camMira.set(TX, 1.0, P.z + 8); fov = 44 - u * 6; mano = 0.01;
+  } else if (t < B(8)) { // 5. ¡sale al césped!
+    const u = entre(t, B(6), B(8)); camPos.set(TX + lerp(3.4, 2.3, u), lerp(0.42, 0.78, u), TZ + lerp(9.6, 11.8, u)); camMira.copy(P).y += 0.72; fov = lerp(44, 33, u); mano = 0.02;
+  } else if (t < B(10)) { // 6 y 7. saluda a un fondo y al otro (por encima del hombro)
+    const lado = t < B(9) ? -1 : 1, u = entre(t, lado < 0 ? B(8) : B(9), lado < 0 ? B(9) : B(10));
+    const d = dir(lado * 1.0), perp = new V3(d.z, 0, -d.x).multiplyScalar(-lado);
+    camPos.copy(P).addScaledVector(d, -3.3 - u * 0.5).addScaledVector(perp, 1.0).setY(1.35 + u * 0.2);
+    camMira.copy(P).addScaledVector(d, 30).setY(4.5 + u * 2); fov = 50 - u * 4; mano = 0.02;
+  } else if (t < B(11)) { // 8. de frente, brazos arriba
+    const u = entre(t, B(10), B(11)), a = lerp(0.45, -0.45, u);
+    camPos.set(P.x + Math.sin(a) * 2.7, 0.55, P.z + Math.cos(a) * 2.7); camMira.copy(P).y += 0.95; fov = 34; mano = 0.015;
+  } else if (t < B(12)) { // 9. carrera, cámara al lado
+    camPos.set(P.x - 5.2, 1.0, P.z + 1.1); camMira.copy(P).add(_v.set(0, 0.8, 1.4)); fov = 36; mano = 0.03;
+  } else if (t < B(13)) { // 10. carrera, de frente
+    const u = entre(t, B(12), B(13)); camPos.copy(P).add(_v.set(0.3, 0.72, 4.3 - u * 0.9)); camMira.copy(P).y += 0.85; fov = 38; mano = 0.03;
+  } else if (t < B(15)) { // 11. en el centro: vuelta alrededor, se ve la ola
+    const u = entre(t, B(13), B(15)), a = 0.5 + u * 2.6, r = lerp(6.5, 5, u);
+    camPos.set(P.x + Math.sin(a) * r, lerp(2.0, 1.35, u), P.z + Math.cos(a) * r); camMira.copy(P).y += 1.0; fov = 40;
+  } else if (t < B(17)) { // 12. desde el césped mirando arriba: fuegos artificiales y confeti
+    const u = entre(t, B(15), B(17)), a = 3.4 + u * 1.9;
+    camPos.set(P.x + Math.sin(a) * 4.8, 0.42, P.z + Math.cos(a) * 4.8); camMira.copy(P).y += 2.5; fov = 60;
+  } else { // 13. grúa: sube hasta ver el estadio entero con el título
+    const u = suave2(entre(t, B(17), FIN)), extra = Math.max(0, t - FIN);
+    const p0 = new V3(P.x + 0.6, 1.25, P.z + 3.8), p1 = new V3(P.x + 2, 6, P.z + 22), p2 = new V3(6, 31, 36);
+    camPos.copy(p0).multiplyScalar((1 - u) * (1 - u)).addScaledVector(p1, 2 * u * (1 - u)).addScaledVector(p2, u * u);
+    if (extra > 0) { const a = Math.atan2(36, 6) + extra * 0.05, r = Math.hypot(6, 36); camPos.set(Math.cos(a) * r, 31, Math.sin(a) * r); }
+    camMira.copy(P).setY(1).lerp(_v.set(0, 7, -14), u); if (extra > 0) camMira.set(-camPos.x * 0.35, 7, -camPos.z * 0.35); fov = lerp(36, 58, u);
+  }
+  if (mano) camPos.add(vibrar(t * 1.4, mano * 3));
+  if (golpe > 0) camPos.add(vibrar(t * 30, golpe * 0.12));
+  camera.position.copy(camPos); camera.lookAt(camMira);
+  const f = ajustarFov(fov);
+  if (Math.abs(camera.fov - f) > 0.01) { camera.fov = f; camera.updateProjectionMatrix(); }
+  U_ESCALA.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+}
+
+// ============================================================================================
+//  Música épica y ambiente del estadio (todo generado con Web Audio, sin archivos)
+// ============================================================================================
+const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+class Sonido {
+  constructor(ctx) { this.ctx = ctx || null; this.ev = []; this.i = 0; this.T0 = 0; this.bucle = false; this.mudo = false; if (ctx) this.montar(); }
+  iniciar() {
+    if (this.ctx) { this.ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    this.ctx = new AC(); this.montar();
+  }
+  montar() {
+    const ctx = this.ctx;
+    this.master = ctx.createGain(); this.master.gain.value = 0.85;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -5; comp.knee.value = 3; comp.ratio.value = 12; comp.attack.value = 0.003; comp.release.value = 0.2;  // casi un limitador: deja respirar la música
+    this.master.connect(comp); comp.connect(ctx.destination);
+    this.reverb = ctx.createConvolver(); this.reverb.buffer = this.impulso(3.8, 2.4);
+    const rg = ctx.createGain(); rg.gain.value = 0.5; this.reverb.connect(rg); rg.connect(this.master);
+    const n = ctx.sampleRate * 2; this.ruido = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = this.ruido.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    this.curva = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; this.curva[i] = Math.tanh(x * 2.2); }
+    this.montarPublico();
+    this.nuevoBus();
+  }
+  impulso(seg, caida) {
+    const ctx = this.ctx, n = Math.floor(ctx.sampleRate * seg), b = ctx.createBuffer(2, n, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = b.getChannelData(ch); let e = 0;
+      for (let i = 0; i < n; i++) { const t = i / n; d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, caida) * Math.min(1, i / (ctx.sampleRate * 0.015)); e += d[i] * d[i]; }
+      const k = 1 / Math.sqrt(e); for (let i = 0; i < n; i++) d[i] *= k;   // energía 1: la reverberación no sube el volumen
+    }
+    return b;
+  }
+  nuevoBus() {
+    const ctx = this.ctx;
+    if (this.bus) { const viejo = this.bus; viejo.gain.setTargetAtTime(0, ctx.currentTime, 0.08); setTimeout(() => viejo.disconnect(), 1200); }
+    this.bus = ctx.createGain(); this.bus.connect(this.master);
+    const envio = ctx.createGain(); envio.gain.value = 0.5; this.bus.connect(envio); envio.connect(this.reverb);
+  }
+  env(t, a, sost, dur, rel, vol) {   // ganancia con ataque, sostenido y caída
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + a); g.gain.setValueAtTime(vol * sost, t + Math.max(a, dur));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(a, dur) + rel);
+    return g;
+  }
+  osc(tipo, f, t, fin, destino, det = 0) { const o = this.ctx.createOscillator(); o.type = tipo; o.frequency.value = f; o.detune.value = det; o.connect(destino); o.start(t); o.stop(fin); return o; }
+  ruidoDesde(t, dur, destino) { const s = this.ctx.createBufferSource(); s.buffer = this.ruido; s.loop = true; s.connect(destino); s.start(t, Math.random() * 1.5, dur); return s; }
+  filtro(tipo, f, q = 0.7) { const b = this.ctx.createBiquadFilter(); b.type = tipo; b.frequency.value = f; b.Q.value = q; return b; }
+  // --- instrumentos ---
+  pad(notas, t, dur, vol, brillo = 1800) { // cuerdas largas
+    const f = this.filtro('lowpass', brillo, 0.3), g = this.env(t, Math.min(0.9, dur * 0.35), 1, dur, 1.4, vol);
+    f.connect(g); g.connect(this.bus);
+    const lfo = this.ctx.createOscillator(), lg = this.ctx.createGain(); lfo.frequency.value = 5.1; lg.gain.value = 7; lfo.connect(lg); lfo.start(t); lfo.stop(t + dur + 1.5);
+    for (const m of notas) for (const d of [-10, 0, 10]) lg.connect(this.osc('sawtooth', mtof(m), t, t + dur + 1.5, f, d + (Math.random() - 0.5) * 5).detune);
+  }
+  pizz(m, t, vol) { // cuerdas cortas del ostinato
+    const f = this.filtro('lowpass', 2600, 0.8); f.frequency.setValueAtTime(2600, t); f.frequency.exponentialRampToValueAtTime(500, t + 0.14);
+    const g = this.env(t, 0.004, 0.5, 0.05, 0.12, vol); f.connect(g); g.connect(this.bus);
+    for (const d of [-8, 8]) this.osc('sawtooth', mtof(m), t, t + 0.3, f, d);
+  }
+  metal(m, t, dur, vol, brillo = 1900) { // metales (trompas y trombones)
+    const f = this.filtro('lowpass', 300, 1.1);
+    f.frequency.setValueAtTime(260, t); f.frequency.linearRampToValueAtTime(brillo, t + 0.1); f.frequency.setTargetAtTime(brillo * 0.6, t + 0.12, 0.35);
+    const g = this.env(t, 0.07, 0.85, dur, 0.4, vol); f.connect(g); g.connect(this.bus);
+    for (const d of [-6, 0, 6]) { const o = this.osc('sawtooth', mtof(m), t, t + dur + 0.5, f, d); o.detune.setValueAtTime(d - 40, t); o.detune.linearRampToValueAtTime(d, t + 0.08); }
+    const sq = this.ctx.createGain(); sq.gain.value = 0.35; sq.connect(f); this.osc('square', mtof(m - 12), t, t + dur + 0.5, sq);
+  }
+  coro(notas, t, dur, vol) { // coro "aaah"
+    const g = this.env(t, 0.9, 1, dur, 1.8, vol), suma = this.ctx.createGain();
+    for (const [fr, q, a] of [[730, 6, 1], [1150, 8, 0.55], [2700, 10, 0.2]]) { const b = this.filtro('bandpass', fr, q), ga = this.ctx.createGain(); ga.gain.value = a * 3.2; suma.connect(b); b.connect(ga); ga.connect(g); }
+    g.connect(this.bus);
+    const lfo = this.ctx.createOscillator(), lg = this.ctx.createGain(); lfo.frequency.value = 5.4; lg.gain.value = 9; lfo.connect(lg); lfo.start(t); lfo.stop(t + dur + 2);
+    for (const m of notas) for (const d of [-14, -5, 5, 14]) lg.connect(this.osc('sawtooth', mtof(m), t, t + dur + 2, suma, d).detune);
+  }
+  timbal(m, t, vol) {
+    const g = this.env(t, 0.003, 0.3, 0.02, 1.5, vol); g.connect(this.bus);
+    const o = this.osc('sine', mtof(m) * 1.04, t, t + 1.8, g); o.frequency.exponentialRampToValueAtTime(mtof(m), t + 0.06);
+    const g2 = this.env(t, 0.002, 0.3, 0.01, 0.12, vol * 0.5); const lp = this.filtro('lowpass', 900); lp.connect(g2); g2.connect(this.bus); this.ruidoDesde(t, 0.2, lp);
+  }
+  taiko(t, vol) {
+    const g = this.env(t, 0.004, 0.5, 0.03, 0.75, vol); g.connect(this.bus);
+    const o = this.osc('sine', 95, t, t + 1, g); o.frequency.exponentialRampToValueAtTime(44, t + 0.2);
+    const g2 = this.env(t, 0.002, 0.4, 0.01, 0.1, vol * 0.6), lp = this.filtro('lowpass', 420); lp.connect(g2); g2.connect(this.bus); this.ruidoDesde(t, 0.15, lp);
+  }
+  caja(t, vol) {
+    const g = this.env(t, 0.002, 0.3, 0.01, 0.13, vol), bp = this.filtro('bandpass', 1900, 0.7); bp.connect(g); g.connect(this.bus); this.ruidoDesde(t, 0.2, bp);
+    const g2 = this.env(t, 0.002, 0.3, 0.01, 0.06, vol * 0.7); g2.connect(this.bus); this.osc('triangle', 190, t, t + 0.12, g2);
+  }
+  platillo(t, vol, dur = 2.8) {
+    const g = this.env(t, 0.003, 0.6, 0.05, dur, vol), hp = this.filtro('highpass', 4200); hp.connect(g); g.connect(this.bus); this.ruidoDesde(t, dur + 0.2, hp);
+  }
+  subida(t, dur, vol) { // platillo al revés / tensión
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + dur); g.gain.setValueAtTime(0, t + dur + 0.01);
+    const bp = this.filtro('bandpass', 400, 0.8); bp.frequency.setValueAtTime(400, t); bp.frequency.exponentialRampToValueAtTime(7000, t + dur);
+    bp.connect(g); g.connect(this.bus); this.ruidoDesde(t, dur + 0.05, bp);
+  }
+  braam(m, t, dur, vol) { // el "BRAAAM" de tráiler
+    const ws = this.ctx.createWaveShaper(); ws.curve = this.curva;
+    const f = this.filtro('lowpass', 120, 1.5); f.frequency.setValueAtTime(110, t); f.frequency.linearRampToValueAtTime(800, t + 0.28); f.frequency.exponentialRampToValueAtTime(220, t + dur);
+    const g = this.env(t, 0.1, 0.8, dur * 0.6, dur * 0.6 + 1.2, vol);
+    ws.connect(f); f.connect(g); g.connect(this.bus);
+    const pre = this.ctx.createGain(); pre.gain.value = 0.3; pre.connect(ws);
+    for (const [mm, d] of [[m - 12, -5], [m - 12, 5], [m, 0], [m + 7, 3]]) this.osc('sawtooth', mtof(mm), t, t + dur + 2, pre, d);
+    this.osc('square', mtof(m - 24), t, t + dur + 2, pre);
+  }
+  campana(m, t, vol) {
+    for (const [r, a, d] of [[1, 1, 2.4], [2.0, 0.45, 1.5], [3.01, 0.3, 1.0], [4.2, 0.16, 0.6], [5.43, 0.1, 0.4]]) { const g = this.env(t, 0.002, 0.5, 0.01, d, vol * a); g.connect(this.bus); this.osc('sine', mtof(m) * r, t, t + d + 0.1, g); }
+  }
+  bajo(m, t, dur, vol) {
+    const f = this.filtro('lowpass', 320), g = this.env(t, 0.03, 0.9, dur, 0.6, vol); f.connect(g); g.connect(this.bus);
+    this.osc('sine', mtof(m), t, t + dur + 0.7, f); this.osc('triangle', mtof(m), t, t + dur + 0.7, f);
+  }
+  petardo(t, vol) {
+    const g = this.env(t, 0.002, 0.4, 0.02, 0.9, vol); g.connect(this.bus);
+    const o = this.osc('sine', 75, t, t + 1, g); o.frequency.exponentialRampToValueAtTime(32, t + 0.5);
+    const g2 = this.env(t, 0.002, 0.4, 0.01, 0.35, vol * 0.8), lp = this.filtro('lowpass', 1500); lp.connect(g2); g2.connect(this.bus); this.ruidoDesde(t, 0.4, lp);
+    for (let i = 0; i < 12; i++) { const tt = t + 0.18 + Math.random() * 0.9, gc = this.env(tt, 0.001, 0.3, 0.003, 0.03, vol * 0.25), hp = this.filtro('highpass', 3000); hp.connect(gc); gc.connect(this.bus); this.ruidoDesde(tt, 0.04, hp); }
+  }
+  llamarada(t, vol) {
+    const g = this.env(t, 0.04, 0.8, 0.35, 0.5, vol), bp = this.filtro('bandpass', 350, 0.7); bp.frequency.setValueAtTime(250, t); bp.frequency.linearRampToValueAtTime(700, t + 0.3);
+    bp.connect(g); g.connect(this.bus); this.ruidoDesde(t, 1, bp);
+  }
+  // --- público ---
+  montarPublico() {
+    const ctx = this.ctx;
+    this.pubFiltro = this.filtro('lowpass', 1500, 0.5); const pubSalida = ctx.createGain(); pubSalida.gain.value = 0.5; this.pubFiltro.connect(pubSalida); pubSalida.connect(this.master);  // la grada, por debajo de la música
+    const env = ctx.createGain(); env.gain.value = 0.18; this.pubFiltro.connect(env); env.connect(this.reverb);
+    const capa = (rate, hp, lp) => { const s = ctx.createBufferSource(); s.buffer = this.ruido; s.loop = true; s.playbackRate.value = rate; const a = this.filtro('highpass', hp), b = this.filtro('lowpass', lp), g = ctx.createGain(); g.gain.value = 0; s.connect(a); a.connect(b); b.connect(g); g.connect(this.pubFiltro); s.start(); return g; };
+    this.murmullo = capa(1, 170, 1000);
+    this.rugido = capa(0.93, 600, 2600);
+    // el murmullo sube y baja solo
+    const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.23; lg.gain.value = 0.05; lfo.connect(lg); lg.connect(this.murmullo.gain); lfo.start();
+  }
+  publico(nivel, rugido, t, tc = 0.5) { this.murmullo.gain.setTargetAtTime(nivel, t, tc); this.rugido.gain.setTargetAtTime(rugido, t, tc); }
+  amortiguar(f, t, tc = 0.3) { this.pubFiltro.frequency.setTargetAtTime(f, t, tc); }
+  canto(t, vol) { // "¡MA-NUEL!" cantado por la grada
+    const ctx = this.ctx, salida = ctx.createGain(); salida.gain.value = vol; salida.connect(this.pubFiltro);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(1, t + 0.05); g.gain.setValueAtTime(1, t + 0.2); g.gain.linearRampToValueAtTime(0.12, t + 0.3);
+    g.gain.linearRampToValueAtTime(1, t + 0.38); g.gain.setValueAtTime(1, t + 0.7); g.gain.linearRampToValueAtTime(0, t + 1.05);
+    g.connect(salida);
+    const F1 = this.filtro('bandpass', 750, 5), F2 = this.filtro('bandpass', 1250, 6), g2 = ctx.createGain(); g2.gain.value = 0.6;
+    F1.connect(g); F2.connect(g2); g2.connect(g);
+    F1.frequency.setValueAtTime(760, t); F1.frequency.setValueAtTime(360, t + 0.32); F1.frequency.linearRampToValueAtTime(500, t + 0.62);
+    F2.frequency.setValueAtTime(1250, t); F2.frequency.setValueAtTime(820, t + 0.32); F2.frequency.linearRampToValueAtTime(1850, t + 0.62);
+    const voces = ctx.createGain(); voces.gain.value = 0.5; voces.connect(F1); voces.connect(F2);
+    for (let i = 0; i < 16; i++) {
+      const f = 165 + Math.random() * 170, o = this.osc('sawtooth', f, t, t + 1.2, voces);
+      o.frequency.setValueAtTime(f, t); o.frequency.setValueAtTime(f * 1.12, t + 0.33); o.frequency.linearRampToValueAtTime(f * 0.96, t + 1.0);
+    }
+    const ra = ctx.createGain(); ra.gain.value = 1.2; ra.connect(F1); ra.connect(F2); this.ruidoDesde(t, 1.1, ra);
+  }
+  palmas(t, n, vol) {
+    for (let i = 0; i < n; i++) { const tt = t + Math.random() * 0.035, g = this.env(tt, 0.001, 0.3, 0.004, 0.05, vol), bp = this.filtro('bandpass', 1000 + Math.random() * 1500, 1.2); bp.connect(g); g.connect(this.pubFiltro); this.ruidoDesde(tt, 0.06, bp); }
+  }
+  // --- reloj ---
+  programar(eventos, T0, desde = 0) { this.ev = eventos.filter((e) => e.t >= desde - 0.01).sort((a, b) => a.t - b.t); this.i = 0; this.T0 = T0; this.bucle = true; this.proxCanto = Math.max(FIN, desde); }
+  tick() {
+    if (!this.ctx) return;
+    const ahora = this.ctx.currentTime;
+    while (this.i < this.ev.length && this.T0 + this.ev[this.i].t < ahora + 0.4) { const e = this.ev[this.i++]; try { e.f(Math.max(ahora + 0.01, this.T0 + e.t)); } catch (err) { console.warn(err); } }
+    // después de la intro la grada sigue cantando
+    while (this.bucle && this.T0 + this.proxCanto < ahora + 0.4) {
+      const a = this.T0 + this.proxCanto;
+      if (a > ahora - 0.2) { this.canto(a, 0.5); [2, 2.5, 3].forEach((p) => this.palmas(a + p * SPB, 12, 0.07)); }
+      this.proxCanto += BAR;
+    }
+  }
+}
+
+function partitura(S) {
+  const ev = [], en = (t, f) => ev.push({ t, f });
+  const AC = { Dm: [50, 57, 62, 65], Bb: [46, 53, 58, 62], F: [53, 57, 60, 65], C: [48, 55, 60, 64], Gm: [43, 55, 58, 62], A: [45, 57, 61, 64], D: [50, 57, 62, 66] };
+  const RAIZ = { Dm: 38, Bb: 34, F: 41, C: 36, Gm: 43, A: 33, D: 38 };
+  const OST = { Dm: [50, 57, 62], Bb: [46, 53, 58], F: [53, 60, 65], C: [48, 55, 60], Gm: [43, 50, 55], A: [45, 52, 57], D: [50, 57, 62] };
+  const ARMONIA = ['Dm', 'Bb', 'C', 'Dm', 'Bb', 'A', 'Dm', 'Bb', 'F', 'C', 'Gm', 'Dm', 'Bb', 'Dm', 'Bb', 'Gm', 'A', 'Bb', 'C', 'D'];
+  // cuerdas largas y bajo
+  ARMONIA.forEach((c, k) => {
+    const dur = k === 19 ? BAR * 3 : BAR, vol = k < 3 ? 0.018 : k < 6 ? 0.016 : k < 13 ? 0.022 : 0.026;
+    if (k === 10) { en(B(10), (a) => S.pad(AC.Gm, a, BAR / 2, vol, 2200)); en(B(10, 2), (a) => S.pad(AC.A, a, BAR / 2, vol, 2200)); en(B(10), (a) => S.bajo(RAIZ.Gm, a, BAR / 2, 0.08)); en(B(10, 2), (a) => S.bajo(RAIZ.A, a, BAR / 2, 0.08)); return; }
+    en(B(k), (a) => S.pad(AC[c].map((m) => k >= 13 ? m + 12 : m), a, dur, vol, k < 6 ? 1300 : 2600));
+    en(B(k), (a) => S.bajo(RAIZ[c], a, dur, k < 3 ? 0.05 : k < 6 ? 0.06 : 0.085));
+  });
+  // braams de tráiler
+  [[0, 'Dm'], [1, 'Bb'], [2, 'C'], [6, 'Dm'], [13, 'Dm'], [19, 'D']].forEach(([k, c]) => en(B(k), (a) => S.braam(RAIZ[c] + 12, a, k === 19 ? 5 : 2.4, 0.2)));
+  // coro
+  en(B(1), (a) => S.coro([62, 69], a, BAR * 2, 0.1));
+  for (let k = 13; k <= 18; k++) en(B(k), (a) => S.coro(AC[ARMONIA[k]].slice(1).map((m) => m + 12), a, BAR, 0.085));
+  en(B(19), (a) => S.coro([62, 66, 69, 74], a, BAR * 3, 0.11));
+  // ostinato de cuerdas (semicorcheas)
+  const patron = [0, 0, 1, 0, 2, 0, 1, 0, 0, 0, 1, 0, 2, 1, 2, 1];
+  for (let k = 3; k <= 18; k++) {
+    const vol = k < 6 ? 0.035 + (k - 3) * 0.014 : 0.07;
+    for (let i = 0; i < 16; i++) { const c = k === 10 ? (i < 8 ? 'Gm' : 'A') : ARMONIA[k]; const m = OST[c][patron[i]] + (k >= 13 ? 12 : 0); en(B(k, i / 4), (a) => S.pizz(m, a, vol * (i % 4 === 0 ? 1.3 : 1))); }
+  }
+  // latido en el túnel, redoble y subida antes de salir
+  for (let k = 3; k <= 5; k++) for (const p of [0, 2]) { const v = 0.35 + (k - 3) * 0.15; en(B(k, p), (a) => S.taiko(a, v)); en(B(k, p + 0.33), (a) => S.taiko(a, v * 0.6)); }
+  en(B(5), (a) => S.subida(a, BAR, 0.3));
+  for (let i = 0; i < 24; i++) en(B(5, i / 6), (a) => S.caja(a, 0.03 + i * 0.011));
+  // golpes grandes
+  for (const k of [6, 13, 17, 19]) en(B(k), (a) => { S.platillo(a, 0.32); S.taiko(a, 1.0); S.timbal(38, a, 0.6); });
+  for (const k of [8, 11, 15]) en(B(k), (a) => S.platillo(a, 0.18, 1.6));
+  // percusión del tema
+  const ritmo = [[0, 1], [1.5, 0.55], [2, 0.85], [3, 0.65], [3.5, 0.55]];
+  for (const k of [6, 7, 8, 9, 13, 14, 15, 16, 17, 18]) {
+    ritmo.forEach(([p, v]) => en(B(k, p), (a) => S.taiko(a, v * 0.75)));
+    en(B(k), (a) => S.timbal(RAIZ[ARMONIA[k]] + 12, a, 0.4)); en(B(k, 2), (a) => S.timbal(RAIZ[ARMONIA[k]] + 12, a, 0.3));
+    en(B(k, 1), (a) => S.caja(a, 0.12)); en(B(k, 3), (a) => S.caja(a, 0.12));
+  }
+  // compás 10: redoble de taikos y metales a golpes
+  for (let i = 0; i < 8; i++) en(B(10, i / 2), (a) => S.taiko(a, 0.35 + i * 0.08));
+  for (let i = 0; i < 8; i++) en(B(10, 2 + i / 4), (a) => S.caja(a, 0.08 + i * 0.02));
+  [[0, 'Gm', 0.6], [1.5, 'Gm', 0.4], [2, 'A', 0.5], [3, 'A', 0.5], [3.5, 'A', 0.4]].forEach(([p, c, d]) => en(B(10, p), (a) => AC[c].slice(1).forEach((m) => S.metal(m, a, d * SPB, 0.05, 2400))));
+  // carrera (11-12): tambores en cada pulso y golpes de metales
+  for (const k of [11, 12]) {
+    for (let p = 0; p < 4; p++) { en(B(k, p), (a) => S.taiko(a, 0.7)); en(B(k, p + 0.5), (a) => S.taiko(a, 0.35)); }
+    en(B(k, 1), (a) => S.caja(a, 0.16)); en(B(k, 3), (a) => S.caja(a, 0.16));
+    [0, 0.75, 1.5, 2.5, 3].forEach((p) => en(B(k, p), (a) => AC[ARMONIA[k]].slice(1).forEach((m) => S.metal(m, a, 0.35, 0.045, 2200))));
+  }
+  en(B(12), (a) => S.subida(a, BAR, 0.28));
+  // melodías (metales): [compás, pulso, duración en pulsos, nota]
+  const MEL1 = [[6, 0, 1.5, 62], [6, 1.5, 0.5, 64], [6, 2, 1, 65], [6, 3, 1, 69], [7, 0, 2, 70], [7, 2, 1, 69], [7, 3, 1, 67],
+    [8, 0, 1.5, 69], [8, 1.5, 0.5, 67], [8, 2, 1, 65], [8, 3, 1, 72], [9, 0, 3, 67], [9, 3, 1, 64]];
+  const MEL2 = [[13, 0, 1.5, 62], [13, 1.5, 0.5, 64], [13, 2, 1, 65], [13, 3, 1, 69], [14, 0, 2, 74], [14, 2, 1, 72], [14, 3, 1, 70],
+    [15, 0, 1.5, 70], [15, 1.5, 0.5, 69], [15, 2, 1, 67], [15, 3, 1, 70], [16, 0, 4, 69],
+    [17, 0, 1, 65], [17, 1, 1, 67], [17, 2, 1, 69], [17, 3, 1, 70], [18, 0, 2, 72], [18, 2, 1, 74], [18, 3, 1, 76], [19, 0, 9, 78]];
+  MEL1.forEach(([k, p, d, m]) => { en(B(k, p), (a) => { S.metal(m, a, d * SPB * 0.95, 0.08); S.metal(m - 12, a, d * SPB * 0.95, 0.05, 1300); }); });
+  MEL2.forEach(([k, p, d, m]) => { en(B(k, p), (a) => { S.metal(m, a, d * SPB * 0.95, 0.085); S.metal(m - 12, a, d * SPB * 0.95, 0.06, 1400); if (k >= 13) S.campana(m + 12, a, 0.05); }); });
+  // final: redoble de timbales y acorde de RE mayor
+  for (let i = 0; i < 20; i++) en(B(18, 2 + i / 10), (a) => S.timbal(38, a, 0.12 + i * 0.022));
+  en(B(19), (a) => [62, 66, 69, 74].forEach((m) => { S.metal(m, a, BAR * 2.2, 0.06); S.campana(m + 12, a, 0.06); }));
+  en(B(19, 0.02), (a) => S.platillo(a, 0.4, 4.5));
+  // efectos sincronizados con lo que se ve
+  FUEGOS.forEach((tf) => en(tf + 0.25, (a) => S.petardo(a, 0.3)));
+  PIROS.forEach((tp) => en(tp, (a) => S.llamarada(a, 0.28)));
+  // la grada: lejos desde el cielo, apagada desde el túnel y, al salir, ¡el estruendo!
+  const P = (t, n, r, f, tc) => en(t, (a) => { S.publico(n, r, a, tc || 0.6); if (f) S.amortiguar(f, a, Math.min(tc || 0.6, 0.4)); });
+  P(0, 0.22, 0.02, 1500); P(B(3) - 0.1, 0.3, 0.05, 380, 0.1); P(B(5), 0.42, 0.14, 650); P(B(6), 0.6, 0.85, 7000, 0.05);
+  P(B(7), 0.5, 0.45); P(B(8), 0.5, 0.6); P(B(10), 0.55, 0.75); P(B(11), 0.45, 0.4); P(B(13), 0.55, 0.65); P(B(15), 0.62, 0.85); P(B(17), 0.6, 0.7); P(FIN, 0.5, 0.42, null, 1.5);
+  en(B(10), (a) => { S.canto(a, 0.55); S.canto(a + BAR / 2, 0.6); });
+  for (const p of [1, 1.5, 3, 3.5]) en(B(10, p), (a) => S.palmas(a, 12, 0.07));
+  return ev;
+}
+
+// ============================================================================================
+//  Guion: momentos de los efectos, textos y voz del speaker
+// ============================================================================================
+const PIROS = [B(6), B(6, 1), B(6, 2), B(6, 3), B(7), B(8), B(9), B(10), B(10, 2)];
+const FUEGOS = [B(13), B(13, 2), B(14), B(14, 1.5), B(14, 3), B(15), B(15, 0.5), B(15, 1), B(15, 2.5), B(16), B(16, 2), B(17), B(17, 1),
+  B(18), B(18, 2), TITULO, TITULO + 0.12, TITULO + 0.3, TITULO + 0.5, B(19, 1), B(19, 2), B(19, 3), FIN, FIN + 0.4];
+const EXCITA = tabla([[0, 0.1], [B(6) - 0.1, 0.12], [B(6) + 0.3, 1], [B(7), 0.8], [B(8), 0.9], [B(11), 0.65], [B(13), 0.9], [B(15), 1], [FIN, 0.85]]);
+const OLA = tabla([[0, 0], [B(13), 0], [B(13) + 1.5, 1], [B(17), 1], [B(17) + 1.5, 0]]);
+const FLASH = tabla([[0, 0.15], [B(6), 0.2], [B(6) + 0.3, 1], [B(11), 0.65], [B(13), 1], [FIN, 0.6]]);
+const LINT = tabla([[0, 0], [B(17), 0], [B(18), 1]]);
+const TEXTOS = [['cartel1', 0.7, 3.9], ['cartel2', 4.3, 7.6], ['rotuloEstadio', B(1) + 2.2, B(3) - 0.3], ['rotuloManuel', B(8) + 0.6, B(10) - 0.4]];
+const VOZ = [[B(3) + 0.9, 'Señoras y señores…'], [B(4) + 0.6, 'bienvenidos al Santiago Bernabéu.'], [B(5) + 0.2, 'Con el número diez…'], [B(5) + 1.9, '¡MANUEEEL!']];
+const sonido = new Sonido();
+const disparados = new Set();
+function eventosVisuales(t) {
+  const una = (clave, cuando, f) => { if (t >= cuando && !disparados.has(clave)) { disparados.add(clave); if (t - cuando < 1.5) f(); } };
+  const TZ = EST.tunel.z, TX = EST.tunel.x;
+  PIROS.forEach((tp, i) => una('p' + i, tp, () => {
+    const lejos = i >= 5;
+    for (const s of [-1, 1]) { llamarada(TX + s * (lejos ? 11 : 4.6), TZ + (lejos ? 5.6 : 4.8)); if (i === 0) chorroCO2(TX + s * 7.5, TZ + 5.2); }
+    if (i === 0) { fuente(TX - 15, TZ + 5.5, 3); fuente(TX + 15, TZ + 5.5, 3); }
+  }));
+  FUEGOS.forEach((tf, i) => una('f' + i, tf - 1.1, () => {
+    const a = azar() * Math.PI * 2, { ax, az, y } = EST.techo;
+    if (i % 2) cohete(Math.cos(a) * (ax + 18), y + 4, Math.sin(a) * (az + 16), 30 + azar() * 20);
+    else cohete((azar() - 0.5) * 90, 0.5, (azar() < 0.5 ? -1 : 1) * 37, 26 + azar() * 12);
+  }));
+  una('confeti1', B(15), () => CONFETI.soltar(MAN.pos, MOVIL ? 350 : 700));
+  una('confeti2', TITULO, () => CONFETI.soltar(MAN.pos, MOVIL ? 350 : 800));
+  una('pantalla1', B(6), () => dibujarPantalla(1));
+  una('pantalla2', B(15), () => dibujarPantalla(2));
+  una('golpe1', B(6), () => { golpe = 1; });
+  una('golpe2', B(13), () => { golpe = 0.6; });
+  una('golpe3', TITULO, () => { golpe = 0.5; });
+  una('titulo', TITULO, () => $('titulo').classList.add('ver'));
+  una('final', FIN + 1.2, () => $('final').classList.add('ver'));
+  VOZ.forEach(([tv, txt], i) => una('v' + i, tv, () => hablar(txt, i)));
+  una('sub-fin', B(6) + 0.5, () => $('subtitulo').classList.remove('ver'));
+  // destello al salir del túnel
+  const fl = $('flash'); const df = t - B(6);
+  fl.style.opacity = df > -0.25 && df < 0.9 ? String(df < 0 ? (df + 0.25) / 0.25 : Math.pow(1 - df / 0.9, 2)) : '0';
+  for (const [id, a, b] of TEXTOS) $(id).classList.toggle('ver', t >= a && t < b);
+}
+let vozEs = null;
+function elegirVoz() {
+  try { const vs = speechSynthesis.getVoices(); vozEs = vs.find((v) => /es[-_]ES/i.test(v.lang)) || vs.find((v) => /^es/i.test(v.lang)) || null; } catch (e) { vozEs = null; }
+}
+if ('speechSynthesis' in window) { elegirVoz(); speechSynthesis.onvoiceschanged = elegirVoz; }
+function hablar(txt, i) {
+  const s = $('subtitulo'); s.textContent = '«' + txt + '»'; s.classList.add('ver');
+  if (sonido.mudo || !('speechSynthesis' in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(txt.replace(/E{2,}/g, 'E'));
+    u.lang = 'es-ES'; if (vozEs) u.voice = vozEs;
+    u.rate = i === 3 ? 0.75 : 0.88; u.pitch = 0.75; u.volume = 1;
+    speechSynthesis.speak(u);
+  } catch (e) { /* sin voz */ }
+}
+
+// ============================================================================================
+//  Bucle principal
+// ============================================================================================
+let modo = 'portada', T0reloj = 0, tPortada = 0, ultimo = performance.now();
+const reloj = () => (sonido.ctx && modo !== 'portada' ? sonido.ctx.currentTime : performance.now() / 1000);
+// ?pasos: reloj de prueba que avanza 1/30 s por fotograma (para sacar capturas exactas)
+const PASOS = PARAMS.has('pasos');
+let tVirtual = 0;
+function tiempoIntro() { return PASOS ? tVirtual : reloj() - T0reloj; }
+let saltoPendiente = true;
+const vallasColor = new THREE.Color();
+function actualizarEscena(t, dt) {
+  // luces: dentro del túnel se apagan los focos del estadio
+  const enTunel = t >= B(3) && t < B(6);
+  if (EST.grupo) EST.grupo.visible = !enTunel;
+  if (PUBLICO) PUBLICO.visible = FLASHES.visible = LAMPARAS.visible = !enTunel;
+  hemi.intensity = enTunel ? 0.03 : 0.45;
+  foco.intensity = enTunel ? 0 : 2.6; rellenos.forEach((l) => { l.visible = !enTunel; });
+  const parpadeo = 0.85 + 0.15 * Math.sin(t * 23) * Math.sin(t * 7.3);
+  lucesTunel.forEach((l, i) => { l.intensity = enTunel ? (i === 2 ? 7 * parpadeo : 7) : (t < B(8) ? 3 : 0); });
+  const luzBoca = t < B(3) ? 0 : t < B(6) ? lerp(0.3, 0.85, entre(t, B(4), B(6))) : 0;
+  if (bocaLuz) bocaLuz.material.opacity = luzBoca;
+  rayosLuz.forEach((r) => { r.material.uniforms.uI.value = luzBoca; });
+  foco.position.copy(MAN.pos).add(_v.set(22, 55, 26)); foco.target.position.copy(MAN.pos); foco.target.updateMatrixWorld();
+  // fuego: luz naranja cuando hay llamas
+  luzFuego.position.set(EST.tunel.x, 3, EST.tunel.z + 5);
+  luzFuego.intensity = emisores.some((e) => e.tipo === 'fuego') ? 260 * (0.7 + 0.3 * Math.random()) : luzFuego.intensity * 0.85;
+  // público
+  U.tiempo.value = t;
+  U.excita.value = EXCITA(t); U.ola.value = OLA(t); U.olaAng.value = (t - B(13)) * 1.35; U.flash.value = FLASH(t); U.lint.value = LINT(t);
+  // vallas publicitarias: laten con la música tras la salida
+  const pulso = t > B(6) ? Math.pow(Math.max(0, Math.cos((t % SPB) / SPB * Math.PI * 2)), 6) : 0;
+  vallasColor.setRGB(0.05 + pulso * 0.9, 0.1 + pulso * 0.6, 0.55 - pulso * 0.2);
+  EST.vallas.forEach((m) => { if (m.emissive) m.emissive.copy(vallasColor); });
+  const dentro = Math.abs(camera.position.x) < 125 && Math.abs(camera.position.z) < 108 && camera.position.y < 58;
+  FAROS.forEach((f, i) => { f.visible = !dentro; f.rotation.z = Math.sin(t * 0.35 + i * 1.7) * 0.45; f.rotation.x = Math.cos(t * 0.27 + i) * 0.35; });
+  golpe = Math.max(0, golpe - dt * 1.6);
+}
+
+function bucle() {
+  requestAnimationFrame(bucle);
+  const ahora = performance.now(); let dt = Math.min(0.05, (ahora - ultimo) / 1000); ultimo = ahora;
+  if (PASOS) { dt = 1 / 30; tVirtual += dt; }
+  let t;
+  if (modo === 'portada') { tPortada += dt; t = -1; }
+  else { t = tiempoIntro(); sonido.tick(); }
+  const tt = modo === 'portada' ? -1 : t;
+  if (modo !== 'portada') { eventosVisuales(t); }
+  actualizarManuel(Math.max(0, tt), dt, saltoPendiente); saltoPendiente = false;
+  actualizarEscena(modo === 'portada' ? 0 : t, dt);
+  actualizarEfectos(dt, modo === 'portada' ? tPortada : t);
+  CONFETI.actualizar(dt, t);
+  if (modo === 'portada') { const a = -2.3 + tPortada * 0.03; camPos.set(Math.cos(a) * 320, 215, Math.sin(a) * 320); camera.position.copy(camPos); camera.lookAt(0, 0, 0); const f = ajustarFov(40); if (camera.fov !== f) { camera.fov = f; camera.updateProjectionMatrix(); } U_ESCALA.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)); }
+  else plano(t);
+  if (MAN.mixer && modo === 'portada') MAN.grupo.visible = false; else MAN.grupo.visible = true;
+  cielo.position.copy(camera.position);
+  composer.render();
+}
+
+// ============================================================================================
+//  Portada, botones y arranque
+// ============================================================================================
+function empezar(desde = 0) {
+  sonido.iniciar();
+  try { if ('speechSynthesis' in window) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(' ')); } } catch (e) { /* sin voz */ }
+  modo = 'intro';
+  disparados.clear(); CONFETI.reiniciar(); dibujarPantalla(desde >= B(6) ? 1 : 0);
+  T0reloj = reloj() + 0.35 - desde; tVirtual = desde;
+  if (sonido.ctx) { sonido.nuevoBus(); sonido.programar(partitura(sonido), T0reloj, desde); }
+  // lo que ya pasó no se dispara
+  const t = desde;
+  if (desde > 0) eventosVisuales(t);
+  saltoPendiente = true;
+  ['titulo', 'final', 'subtitulo'].forEach((id) => $(id).classList.remove('ver'));
+  try { if (desde > 0 && 'speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) { /* sin voz */ }
+  if (desde >= TITULO) $('titulo').classList.add('ver');
+  document.body.classList.add('cine');
+  $('portada').classList.add('fuera');
+  const negro = $('negro');
+  if (desde <= 0) { negro.style.transition = 'none'; negro.style.opacity = '1'; void negro.offsetWidth; negro.style.transition = ''; }
+  requestAnimationFrame(() => requestAnimationFrame(() => { negro.style.opacity = '0'; }));
+}
+function saltar() {
+  if (modo !== 'intro') return;
+  try { speechSynthesis.cancel(); } catch (e) { /* sin voz */ }
+  $('subtitulo').classList.remove('ver');
+  const desde = FIN + 0.2;
+  T0reloj = reloj() - desde; tVirtual = desde;
+  if (sonido.ctx) {
+    sonido.nuevoBus(); sonido.programar([], T0reloj, desde);
+    const a = sonido.ctx.currentTime + 0.02;
+    [62, 66, 69, 74].forEach((m) => { sonido.metal(m, a, 3, 0.06); sonido.campana(m + 12, a, 0.05); });
+    sonido.coro([62, 66, 69], a, 3, 0.1); sonido.platillo(a, 0.3, 3.5); sonido.taiko(a, 0.9); sonido.publico(0.5, 0.5, a, 0.3); sonido.amortiguar(7000, a, 0.1);
+  }
+  for (let i = 0; i < 80; i++) disparados.add('p' + i), disparados.add('f' + i), disparados.add('v' + i);
+  ['confeti1', 'golpe1', 'golpe2', 'golpe3', 'sub-fin', 'pantalla1', 'pantalla2'].forEach((k) => disparados.add(k));
+  dibujarPantalla(2);
+  saltoPendiente = true;
+}
+$('empezar').addEventListener('click', () => empezar(0));
+$('repetir').addEventListener('click', () => empezar(0));
+$('saltar').addEventListener('click', saltar);
+$('volumen').addEventListener('click', () => {
+  sonido.mudo = !sonido.mudo; $('volumen').textContent = sonido.mudo ? '🔇' : '🔊';
+  if (sonido.ctx) sonido.master.gain.setTargetAtTime(sonido.mudo ? 0 : 0.85, sonido.ctx.currentTime, 0.05);
+  if (sonido.mudo) try { speechSynthesis.cancel(); } catch (e) { /* sin voz */ }
+});
+let avisoT = 0;
+function aviso(txt) { const a = $('aviso'); a.textContent = txt; a.classList.add('ver'); clearTimeout(avisoT); avisoT = setTimeout(() => a.classList.remove('ver'), 2600); }
+$('jugar').addEventListener('click', () => aviso('¡El partido llega muy pronto! ⚽'));
+
+const estado = (txt) => { $('estado').textContent = txt; };
+async function cargarEstadio(buffer, nombre) {
+  estado('Montando el estadio…');
+  montarEstadio(await parsear(buffer));
+  $('fEstadio').textContent = 'Estadio: ' + nombre + ' ✓';
+  estado('Llenando las gradas de aficionados…');
+  await llenarGradas((p) => estado(`Llenando las gradas de aficionados… ${Math.round(p * 100)} %`));
+}
+async function cargarManuel(buffer, nombre) {
+  const g = await parsear(buffer);
+  montarManuel(g, false);
+  $('fManuel').textContent = 'Manuel: ' + nombre + ' ✓';
+}
+async function cargarTodo() {
+  try {
+    let e = await leerGuardado('estadio'), nombreE = 'el tuyo (guardado)';
+    if (!esGlb(e)) { const d = await descargar(['santiago_bernabeu.glb', 'bernabeu.glb', 'Bernabeu.glb', 'estadio.glb']); e = d && d.buffer; nombreE = d && d.nombre; }
+    if (!e) { $('fEstadio').textContent = 'Estadio: no encontrado'; estado('No encuentro el estadio: pulsa «cambiar» y elige el .glb'); return; }
+    await cargarEstadio(e, nombreE);
+    estado('Preparando a Manuel…');
+    let m = await leerGuardado('manuel'), nombreM = 'el tuyo (guardado)';
+    if (!esGlb(m)) { const d = await descargar(['manuel.glb', 'Manuel.glb', 'nino.glb']); m = d && d.buffer; nombreM = d && d.nombre; }
+    let ok = false;
+    if (m) { try { await cargarManuel(m, nombreM); ok = true; } catch (err) { console.warn(err); } }
+    if (!ok) {
+      const d = await descargar(['reserva.glb']);
+      if (d) { montarManuel(await parsear(d.buffer), true); $('fManuel').textContent = 'Manuel: niño de repuesto (pulsa «cambiar» y elige manuel.glb)'; }
+      else { montarMuneco(); $('fManuel').textContent = 'Manuel: muñeco (pulsa «cambiar» y elige manuel.glb)'; }
+    }
+    saltoPendiente = true;
+    renderer.compile(scene, camera);
+    estado('');
+    $('empezar').disabled = false; $('empezar').textContent = '▶ SALIR AL CÉSPED';
+    $('negro').style.opacity = '0';
+    const desde = parseFloat(PARAMS.get('t'));
+    if (!isNaN(desde)) empezar(desde);
+    window.__listo = true;
+  } catch (err) {
+    console.error(err); estado('Algo ha fallado al cargar: ' + (err && err.message || err));
+  }
+}
+async function alElegir(input, clave, cargar) {
+  const f = input.files && input.files[0]; if (!f) return;
+  const buf = await f.arrayBuffer();
+  if (!esGlb(buf)) { aviso('Ese archivo no es un .glb'); return; }
+  $('empezar').disabled = true; $('empezar').textContent = 'Cargando…';
+  try { await cargar(buf, f.name); await guardar(clave, buf); estado('Guardado en este dispositivo ✓'); }
+  catch (err) { console.error(err); estado('No he podido abrir ese archivo'); }
+  $('empezar').disabled = false; $('empezar').textContent = '▶ SALIR AL CÉSPED';
+}
+$('archivoManuel').addEventListener('change', (e) => alElegir(e.target, 'manuel', cargarManuel));
+$('archivoEstadio').addEventListener('change', (e) => alElegir(e.target, 'estadio', cargarEstadio));
+
+if (PARAMS.has('prueba')) {
+  window.__prueba = { Sonido, partitura, B, FIN, MAN, EST, ir: (t) => empezar(t), get publico() { return PUBLICO; } };
+  if (PASOS) { const st = document.createElement('style'); st.textContent = '*{transition:none!important}'; document.head.appendChild(st); }
+}
+bucle();
+cargarTodo();
+</script>
+</body>
+</html>
