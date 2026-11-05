@@ -40,23 +40,32 @@ export async function crearPartido(C) {
   // ------------------------------------------------------------------------------------------
   //  Medidas del campo (sacadas de las porterías y los banderines del estadio)
   // ------------------------------------------------------------------------------------------
-  const CAMPO = (() => {
+  // se vuelve a medir al cambiar de estadio
+  const CAMPO = { L: 52.5, W: 34, P: 3.66, H: 2.44, area: 16.5, fondo: 2.0 };
+  let L = 52.5, W = 34;
+  function medirCampo() {
     const v = new V3(), largos = [], anchos = [], banderas = [];
     for (const o of EST.mallas) {
-      if (!/poste|post|goal|porter/i.test((o.material && o.material.name) || '')) continue;
+      if (!o.visible || /grada|respaldo|asiento|seat|stand|cubierta|roof/i.test((o.material && o.material.name) || '')) continue;
       const p = o.geometry.attributes.position;
       for (let i = 0; i < p.count; i++) {
         v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld);
         if (Math.abs(v.x) > 35 && Math.abs(v.x) < 70 && v.y > 2.1 && v.y < 2.8 && Math.abs(v.z) < 6) { largos.push(Math.abs(v.x)); anchos.push(Math.abs(v.z)); }
-        if (Math.abs(v.x) > 35 && v.y > 0.9 && v.y < 1.8 && Math.abs(v.z) > 20 && Math.abs(v.z) < 50) banderas.push(Math.abs(v.z));
       }
     }
     const mediana = (a, q = 0.5) => { if (!a.length) return null; a.sort((x, y) => x - y); return a[Math.floor((a.length - 1) * q)]; };
-    const L = mediana(largos, 0.3) || 52.5, P = Math.max(2.8, Math.min(4.5, (mediana(anchos, 0.95) || 3.72) - 0.08)), W = mediana(banderas) || L * 0.65;
-    return { L, W, P, H: 2.44, area: 16.5, fondo: 2.0 };
-  })();
-  console.log('Campo:', CAMPO);
-  const { L, W } = CAMPO;
+    const Lm = mediana(largos, 0.3) || 52.5;
+    for (const o of EST.mallas) {
+      if (!o.visible) continue;
+      const p = o.geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); if (Math.abs(Math.abs(v.x) - Lm) < 1.2 && v.y > 0.9 && v.y < 1.8 && Math.abs(v.z) > 25 && Math.abs(v.z) < 45) banderas.push(Math.abs(v.z)); }
+    }
+    const cerca = anchos.filter((z, i) => Math.abs(largos[i] - Lm) < 0.6);
+    CAMPO.L = Lm; CAMPO.P = Math.max(2.8, Math.min(4.5, (mediana(cerca, 0.95) || 3.72) - 0.08)); CAMPO.W = mediana(banderas) || 34;
+    L = CAMPO.L; W = CAMPO.W;
+    console.log('Campo:', JSON.stringify(CAMPO));
+  }
+  medirCampo();
 
   // ------------------------------------------------------------------------------------------
   //  Interfaz (marcador, barras, mensajes, controles táctiles, menús)
@@ -419,7 +428,7 @@ export async function crearPartido(C) {
     const j = { equipo, i, rol: ROLES[i], dorsal: DORSALES[i], nombre, pos: new V3(), vel: new V3(), rumbo: 0, objetivo: new V3(), tPensar: azar() * 0.3,
       tGolpeo: 0, v: 0, noToca: 0, aturdido: 0, plancha: 0, dirPlancha: new V3(), estirada: 0, ladoEstirada: 0, wI: 0, wD: 0, wU: 0, celebra: 0, escala: 1, esManuel: false, alt: 0 };
     j.grupo = new THREE.Group(); j.inclina = new THREE.Group(); j.grupo.add(j.inclina); raiz.add(j.grupo);
-    const sombra = new THREE.Mesh(sombraGeo, matSombra); sombra.position.y = 0.02; sombra.renderOrder = 1; j.grupo.add(sombra);
+    const sombra = new THREE.Mesh(sombraGeo, matSombra); sombra.position.y = 0.05; sombra.renderOrder = 1; j.grupo.add(sombra);
     const esPortero = i === 0;
     if (equipo === 0 && i === 10 && MAN.modelo) {
       // Manuel: su propio modelo, su cara, el nº 10
@@ -502,13 +511,13 @@ export async function crearPartido(C) {
   // Marca del jugador que controlas
   const marca = new THREE.Group();
   const anillo = new THREE.Mesh(anilloGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(0.4, 2.2, 2.6), transparent: true, opacity: 0.9, depthWrite: false }));
-  anillo.position.y = 0.03; marca.add(anillo);
+  anillo.position.y = 0.055; marca.add(anillo);
   const flecha = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 4), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 2.4, 2.8) }));
   flecha.rotation.x = Math.PI; flecha.position.y = 2.0; marca.add(flecha);
   raiz.add(marca);
   // Pase: una marca en el suelo sobre el compañero que recibirá
   const marcaPase = new THREE.Mesh(anilloGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 2.0, 0.6), transparent: true, opacity: 0.0, depthWrite: false }));
-  marcaPase.position.y = 0.03; raiz.add(marcaPase);
+  marcaPase.position.y = 0.055; raiz.add(marcaPase);
 
   // ------------------------------------------------------------------------------------------
   //  Estado del partido
@@ -520,6 +529,7 @@ export async function crearPartido(C) {
     reanudar: null, celebrador: null, ultimoGol: null, tCanto: 8, tOla: 40, camara: { p: new V3(0, 30, 40), m: new V3() }, sacudida: 0,
     vistos: false,
   };
+  const DUR_PANORAMICA = 8;
   const ATACA = (eq) => (eq === 0 ? 1 : -1);   // hacia dónde ataca cada equipo (en X)
   let DIF = DIFICULTAD.Normal;
 
@@ -649,7 +659,7 @@ export async function crearPartido(C) {
     golpeo(j, 'kick'); sPatada(largo ? 0.6 : 0.35);
     balon.receptor = c;
     if (c) { c.noToca = 0; if (j.equipo === 0) { P.superM = Math.min(1, P.superM + 0.05); if (!P.autoMio) controlar(c); } }
-    if (c && j.equipo === 0) { marcaPase.position.set(c.pos.x, 0.03, c.pos.z); marcaPase.material.opacity = 0.9; }
+    if (c && j.equipo === 0) { marcaPase.position.set(c.pos.x, 0.055, c.pos.z); marcaPase.material.opacity = 0.9; }
   }
   function chutar(j, potencia, apuntaZ, superTiro = false) {
     const s = ATACA(j.equipo), gx = s * (L + 0.5);
@@ -875,7 +885,7 @@ export async function crearPartido(C) {
     const s = Math.hypot(b.vel.x, b.vel.z);
     if (s > 0.05) { ejeGiro.set(b.vel.z, 0, -b.vel.x).normalize(); balonMalla.rotateOnWorldAxis(ejeGiro, s * dt / RB); }
     balonMalla.position.copy(b.pos);
-    sombraBalon.position.set(b.pos.x, 0.025, b.pos.z); sombraBalon.scale.setScalar(0.45 * clamp(1 - b.pos.y / 8, 0.3, 1));
+    sombraBalon.position.set(b.pos.x, 0.052, b.pos.z); sombraBalon.scale.setScalar(0.45 * clamp(1 - b.pos.y / 8, 0.3, 1));
     if (b.fuego > 0) { b.fuego -= dt; C.estela(b.pos, b.vel); }
     if (b.noAtrapar > 0) b.noAtrapar -= dt;
   }
@@ -1167,6 +1177,8 @@ export async function crearPartido(C) {
         <div class="vs">MANUEL FC · CONTRA · ${P.rival.nombre}</div>
         <div class="pt-et">RIVAL</div>
         <div class="pt-fila">${RIVALES.map((r) => `<button class="pt-op${r === P.rival ? ' sel' : ''}" data-g="rival" data-v="${r.nombre}"><i style="background:${r.camiseta}"></i>${r.nombre}</button>`).join('')}</div>
+        <div class="pt-et">ESTADIO</div>
+        <div class="pt-fila">${Object.entries(C.ESTADIOS).map(([id, e]) => `<button class="pt-op${id === C.estadio() ? ' sel' : ''}" data-g="estadio" data-v="${id}">🏟️ ${e.nombre}</button>`).join('')}</div>
         <div class="pt-et">DURACIÓN</div>
         <div class="pt-fila">${[['2', 'Corto · 2 min'], ['3', 'Normal · 3 min'], ['5', 'Largo · 5 min']].map(([v, t]) => `<button class="pt-op${+v === P.duracion ? ' sel' : ''}" data-g="dur" data-v="${v}">${t}</button>`).join('')}</div>
         <div class="pt-et">DIFICULTAD</div>
@@ -1180,8 +1192,12 @@ export async function crearPartido(C) {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.g === 'rival') { P.rival = RIVALES.find((r) => r.nombre === b.dataset.v); pintar(); }
       else if (b.dataset.g === 'dur') { P.duracion = +b.dataset.v; pintar(); }
+      else if (b.dataset.g === 'estadio' && b.dataset.v !== C.estadio() && !P.cargandoEstadio) {
+        P.cargandoEstadio = true; b.textContent = 'Cargando…';
+        C.cambiarEstadio(b.dataset.v).then((ok) => { P.cargandoEstadio = false; if (ok) medirCampo(); else mensaje('NO ENCUENTRO ESE ESTADIO', '', 2); pintar(); });
+      }
       else if (b.dataset.g === 'dif') { P.dificultad = b.dataset.v; pintar(); }
-      else if (b.dataset.accion === 'jugar') empezarPartido();
+      else if (b.dataset.accion === 'jugar' && !P.cargandoEstadio) empezarPartido();
     };
   }
   function empezarPartido() {
@@ -1193,8 +1209,11 @@ export async function crearPartido(C) {
     colocarSaque(0);
     P.estado = 'presentacion'; P.tEstado = 0;
     pub(0.55, 0.7, ahoraS(), 0.3); sonido.amortiguar(7000, ahoraS(), 0.1);
-    mensaje('MANUEL FC', 'CONTRA ' + P.rival.nombre, 2.6);
-    narrar('Bienvenidos al Bernabéu. Manuel F C contra ' + P.rival.nombre.toLowerCase() + '. ¡Empieza el partido!', true);
+    const est = C.ESTADIOS[C.estadio()].nombre;
+    setTimeout(() => { if (P.estado === 'presentacion') mensaje('MANUEL FC', 'CONTRA ' + P.rival.nombre, 3); }, 3600);
+    mensaje(est.toUpperCase(), 'ESTA NOCHE · ' + P.duracion + ' MINUTOS', 3);
+    narrar('Bienvenidos al ' + est + '. Manuel F C contra ' + P.rival.nombre.toLowerCase() + '. ¡Empieza el partido!', true);
+    P.panoramica = true;
   }
   function menuPausa() {
     P.estadoAntes = P.estado; P.estado = 'pausa';
@@ -1293,7 +1312,8 @@ export async function crearPartido(C) {
       }
     } else {
       actualizarBalon(dt);
-      if (est === 'presentacion' && P.tEstado > 2.6) { P.estado = 'saque'; P.tEstado = 0; }
+      if (est === 'presentacion' && (ENT.pase || ENT.tiro) && P.tEstado > 0.5) P.tEstado = Math.max(P.tEstado, DUR_PANORAMICA);
+      if (est === 'presentacion' && P.tEstado >= DUR_PANORAMICA) { P.estado = 'saque'; P.tEstado = 0; P.panoramica = false; P.camara.p.copy(camPos); P.camara.m.copy(camMira); }
       if (est === 'saque') {
         const R = P.reanudar;
         if (P.tEstado > 0.8 && !R.pitado) { R.pitado = true; sPito(1, 0.5); if (!P.vistos && R.equipo === 0) { ayuda(MOVIL ? 'Mueve el joystick y pulsa <b>PASE</b> para sacar · <b>TIRO</b> (mantén) para chutar · <b>⚡</b> para correr más' : 'Flechas para moverte · <b>Z</b> pase · <b>X</b> tiro (mantén para cargar) · <b>Mayús</b> sprint', 7); P.vistos = true; } }
@@ -1330,7 +1350,13 @@ export async function crearPartido(C) {
     for (const j of P.todos) animar(j, dt, tTotal);
 
     // cámara
-    if (est === 'gol' && P.celebrador) {
+    if (est === 'presentacion' && P.panoramica) {
+      // panorámica: vuelo alto alrededor del estadio que baja hasta la banda
+      const u = clamp(P.tEstado / DUR_PANORAMICA, 0, 1), e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+      const a = lerp(-Math.PI * 1.25, 0, e), r = lerp(140, 20, e), h = lerp(150, 9, Math.pow(e, 0.7));
+      camPos.set(Math.sin(a) * r, h, Math.cos(a) * r); camMira.set(0, lerp(12, 0.8, e), lerp(0, -2, e));
+      aplicarCamara(lerp(46, 38, e));
+    } else if (est === 'gol' && P.celebrador) {
       const c = P.celebrador.pos, a = P.tEstado * 0.5 + 0.6;
       const objP = new V3(c.x + Math.sin(a) * 6, 2.2, c.z + Math.cos(a) * 6);
       camPos.lerp(objP, 1 - Math.exp(-dtReal * (P.tEstado < 0.1 ? 60 : 4))); camMira.lerp(c.clone().setY(1.1), 1 - Math.exp(-dtReal * 6));

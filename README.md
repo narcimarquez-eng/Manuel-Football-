@@ -35,9 +35,12 @@ Detalles:
 ## El partido (`partido.js`)
 
 Al acabar la intro, **¡A jugar el partido!** (o **⚽ Jugar partido** en la portada) abre un partido de
-fútbol arcade **11 contra 11** en el mismo estadio: Manuel FC (Manuel con el 10) contra uno de cuatro rivales
+fútbol arcade **11 contra 11** en el **Santiago Bernabéu** o en el **Camp Nou** (se elige en el menú): Manuel FC (Manuel con el 10) contra uno de cuatro rivales
 (Tiburones, Volcanes, Halcones o Relámpagos), con duración y dificultad a elegir.
 
+- **Panorámica**: al empezar, la cámara sobrevuela el estadio y baja hasta la banda (se salta con PASE o TIRO).
+- **Césped**: textura propia en los dos estadios (manchas, desgaste en las áreas, briznas en relieve, líneas
+  reglamentarias) y franjas de corte que se ven más claras u oscuras según el lado desde el que mira la cámara.
 - **Jugadores**: todos salen del modelo de Manuel (`jugador.glb`, una versión ligera de `nino.glb` hecha con
   glTF-Transform). A cada uno se le quita la cabeza y se le pone otra de dibujo con su cara, sus ojos, su pelo
   (corto, pinchos, afro, cresta, coleta, rizos, rapado o flequillo) y su color de piel, que también cambia en
@@ -54,12 +57,14 @@ fútbol arcade **11 contra 11** en el mismo estadio: Manuel FC (Manuel con el 10
   celebraciones con fuegos artificiales y confeti, grada que se anima cerca de las áreas, la ola, cantos
   «¡MA-NUEL!», pitidos del árbitro, narrador y radar del campo.
 
-Para probar: `?partido` abre el partido directamente y `?auto=2` juega un partido de 2 minutos en el que el
+Para probar: `?partido` abre el partido directamente, `?estadio=campnou` lo abre en el Camp Nou y `?auto=2` juega un partido de 2 minutos en el que el
 ordenador lleva a los dos equipos.
 
 ## Modelos
 
-- `santiago_bernabeu.glb`: el estadio. La página lo escala sola (el césped a su tamaño real),
+- `santiago_bernabeu.glb` y `camp_nou.glb`: los estadios. La página encuentra las porterías y ajusta la escala
+  para que la línea de gol quede a 52,5 m del centro (campo de 105 × 68 m).
+- `santiago_bernabeu.glb`: el estadio de la intro. La página lo escala sola (el césped a su tamaño real),
   encuentra la boca del túnel de vestuarios y construye el pasillo detrás.
 - `nino.glb`: **Manuel**, ya preparado con `Nino.py` del repositorio *mi-perro* (brazo bajado, animaciones de
   andar, correr, chutar… y el balón como pieza aparte, que la intro quita). Si no estuviera, la página busca

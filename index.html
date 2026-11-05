@@ -278,7 +278,7 @@ const EST = {
   grupo: null, tunel: { x: 0, z: -40, ancho: 4, alto: 2.8 }, mallas: [], pantalla: null, vallas: [],
   techo: { ax: 62, az: 44, y: 54 }, caja: new THREE.Box3(),
 };
-const NO_GRADA = /cubierta|video|nervio|cojin|plaza|castellana|arbol|coche|campo|tunel|valla|poste|red|bandera|roof|screen|pitch|grass|tree|car/i;
+const NO_GRADA = /cubierta|video|nervio|cojin|plaza|castellana|arbol|coche|campo|tunel|valla|poste|red|bandera|roof|screen|pitch|grass|tree|car|explanada|foso|morro|foco|linea|pantalla/i;
 
 function buscarBoca(raiz) {
   // vértices de la boca del túnel a ras de suelo; nos quedamos con el grupo más cercano al centro
@@ -301,6 +301,87 @@ function buscarBoca(raiz) {
     ancho: Math.max(2.5, Math.max(...xs) - Math.min(...xs)), alto: Math.max(2.4, Math.max(...ys)), vertices: grupo };
 }
 
+function medirLineaGol(raiz) {
+  // larguero: vértices a 2,2-2,8 m de altura, cerca del eje y lejos del centro
+  const v = new V3(), xs = [];
+  raiz.traverse((o) => {
+    if (!o.isMesh) return;
+    const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); if (v.y > 2.2 && v.y < 2.8 && Math.abs(v.z) < 6 && Math.abs(v.x) > 38 && Math.abs(v.x) < 75) xs.push(Math.abs(v.x)); }
+  });
+  if (xs.length < 4) return null;
+  xs.sort((a, b) => a - b); return xs[Math.floor(xs.length * 0.3)];
+}
+// Césped: textura propia (manchas, desgaste, briznas) y franjas de corte que cambian con el punto de vista
+const CESPED = (() => {
+  const L = 52.5, W = 34, ANCHO = 120, FONDO = 82, s = 2048 / ANCHO;
+  const [c, g] = lienzo(2048, Math.round(FONDO * s));
+  const H = c.height, X = (x) => (x + ANCHO / 2) * s, Y = (z) => (z + FONDO / 2) * s, r = prng(31);
+  g.fillStyle = '#3d7a30'; g.fillRect(0, 0, 2048, H);
+  // manchas grandes de color (zonas más secas, más oscuras o más verdes)
+  for (let i = 0; i < 520; i++) {
+    const x = r() * 2048, y = r() * H, rad = 20 + r() * 120, k = r();
+    const col = k < 0.35 ? 'rgba(30,70,22,' : k < 0.7 ? 'rgba(92,140,58,' : 'rgba(120,128,60,';
+    const gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, col + (0.05 + r() * 0.07) + ')'); gr.addColorStop(1, col + '0)');
+    g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+  }
+  // desgaste en las áreas pequeñas, en los puntos de penalti y en el centro
+  const desgaste = (x, z, rad, a) => { const gr = g.createRadialGradient(X(x), Y(z), 0, X(x), Y(z), rad * s); gr.addColorStop(0, `rgba(122,104,58,${a})`); gr.addColorStop(1, 'rgba(122,104,58,0)'); g.fillStyle = gr; g.fillRect(X(x) - rad * s, Y(z) - rad * s, rad * s * 2, rad * s * 2); };
+  for (const sx of [-1, 1]) { desgaste(sx * 50.5, 0, 5, 0.35); desgaste(sx * 41.5, 0, 2.5, 0.25); desgaste(sx * 46, 0, 7, 0.12); }
+  desgaste(0, 0, 3, 0.2);
+  // grano fino
+  for (let i = 0; i < 260000; i++) { const v = r(); g.fillStyle = v < 0.5 ? `rgba(20,45,15,${0.1 + r() * 0.12})` : `rgba(150,190,100,${0.06 + r() * 0.1})`; g.fillRect(r() * 2048, r() * H, 1 + (r() < 0.2), 1 + (r() < 0.3)); }
+  // líneas reglamentarias (12 cm), con el borde algo suave
+  const lineas = (ancho, alfa) => {
+    g.strokeStyle = `rgba(245,248,240,${alfa})`; g.lineWidth = ancho * s;
+    const rect = (x0, z0, x1, z1) => g.strokeRect(X(x0), Y(z0), X(x1) - X(x0), Y(z1) - Y(z0));
+    const arco = (x, z, rad, a0, a1) => { g.beginPath(); g.arc(X(x), Y(z), rad * s, a0, a1); g.stroke(); };
+    rect(-L, -W, L, W); g.beginPath(); g.moveTo(X(0), Y(-W)); g.lineTo(X(0), Y(W)); g.stroke();
+    arco(0, 0, 9.15, 0, Math.PI * 2);
+    for (const sx of [-1, 1]) {
+      rect(Math.min(sx * L, sx * (L - 16.5)), -20.16, Math.max(sx * L, sx * (L - 16.5)), 20.16);
+      rect(Math.min(sx * L, sx * (L - 5.5)), -9.16, Math.max(sx * L, sx * (L - 5.5)), 9.16);
+      const a = Math.acos(5.5 / 9.15);
+      if (sx > 0) arco(L - 11, 0, 9.15, Math.PI - a, Math.PI + a); else arco(-L + 11, 0, 9.15, -a, a);
+      for (const sz of [-1, 1]) arco(sx * L, sz * W, 1, sx > 0 ? (sz > 0 ? Math.PI : Math.PI / 2) : (sz > 0 ? 1.5 * Math.PI : 0), sx > 0 ? (sz > 0 ? 1.5 * Math.PI : Math.PI) : (sz > 0 ? 2 * Math.PI : Math.PI / 2));
+    }
+    g.fillStyle = `rgba(245,248,240,${alfa})`;
+    for (const x of [0, -41.5, 41.5]) { g.beginPath(); g.arc(X(x), Y(0), 0.15 * s, 0, Math.PI * 2); g.fill(); }
+  };
+  lineas(0.22, 0.12); lineas(0.12, 0.9);
+  const mapa = new THREE.CanvasTexture(c); mapa.colorSpace = THREE.SRGBColorSpace; mapa.anisotropy = ANISO;
+  // briznas: textura pequeña que se repite (gris con un poco de verde, multiplica el color)
+  const [d, gd] = lienzo(512, 512);
+  gd.fillStyle = '#7f8a7a'; gd.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 26000; i++) {
+    const x = r() * 512, y = r() * 512, l = 3 + r() * 7, a = -Math.PI / 2 + (r() - 0.5) * 0.9, v = 70 + r() * 120 | 0;
+    gd.strokeStyle = `rgba(${v * 0.85 | 0},${v},${v * 0.7 | 0},${0.35 + r() * 0.4})`; gd.lineWidth = 1 + r();
+    gd.beginPath(); gd.moveTo(x, y); gd.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); gd.stroke();
+  }
+  const detalle = new THREE.CanvasTexture(d); detalle.wrapS = detalle.wrapT = THREE.RepeatWrapping; detalle.anisotropy = ANISO; detalle.repeat.set(ANCHO / 1.6, FONDO / 1.6);
+  const mat = new THREE.MeshStandardMaterial({ map: mapa, roughness: 0.92, metalness: 0, bumpMap: detalle, bumpScale: 1.2 });
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uDetalle = { value: detalle }; sh.uniforms.uRep = { value: new THREE.Vector2(ANCHO / 1.6, FONDO / 1.6) };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vMundo;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvMundo = (modelMatrix * vec4(position, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vMundo; uniform sampler2D uDetalle; uniform vec2 uRep;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        {
+          vec3 det = texture2D(uDetalle, vMapUv * uRep).rgb;
+          diffuseColor.rgb *= mix(vec3(1.0), det * 2.0, 0.55);
+          // franjas del corte: las briznas peinadas hacia un lado brillan o se oscurecen según desde dónde se miren
+          float f = mod(floor((vMundo.x + 52.5) / 5.833), 2.0) * 2.0 - 1.0;
+          float f2 = mod(floor((vMundo.z + 34.0) / 6.8), 2.0) * 2.0 - 1.0;
+          vec3 V = normalize(cameraPosition - vMundo);
+          float lado = V.x >= 0.0 ? 1.0 : -1.0;
+          diffuseColor.rgb *= 1.0 + f * (0.07 + 0.08 * abs(V.x)) * lado + f * 0.035 + f2 * 0.025;
+        }`);
+  };
+  mat.customProgramCacheKey = () => 'cesped-1';
+  const geo = new THREE.PlaneGeometry(ANCHO, FONDO); geo.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(geo, mat); m.position.y = 0.035; m.receiveShadow = true; m.renderOrder = -1;
+  return m;
+})();
+scene.add(CESPED);
 function montarEstadio(gltf) {
   if (EST.grupo) { scene.remove(EST.grupo); }
   const raiz = gltf.scene, interior = new THREE.Group(), grupo = new THREE.Group();
@@ -317,6 +398,9 @@ function montarEstadio(gltf) {
   grupo.scale.setScalar(117 / largo);
   grupo.rotation.y = t.z > t.x ? Math.PI / 2 : 0;
   grupo.updateMatrixWorld(true);
+  // si se encuentran las porterías, se ajusta la escala para que la línea de gol quede a 52,5 m
+  const lineaGol = medirLineaGol(raiz);
+  if (lineaGol && lineaGol > 40 && lineaGol < 70 && Math.abs(lineaGol - 52.5) > 0.3) { grupo.scale.multiplyScalar(52.5 / lineaGol); grupo.updateMatrixWorld(true); }
   let boca = buscarBoca(raiz);
   if (boca && boca.z > 0) { grupo.rotation.y += Math.PI; grupo.updateMatrixWorld(true); boca = buscarBoca(raiz); }
   if (boca) {
@@ -337,6 +421,7 @@ function montarEstadio(gltf) {
   raiz.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = false; o.receiveShadow = o === campo;
+    if (o === campo) o.visible = false;   // va el césped propio (CESPED)
     const n = (o.material && o.material.name) || '';
     if (/video|pantalla|screen|marcador/i.test(n)) { EST.pantalla = o; o.material = matPantalla; }
     else if (/valla|board|publi/i.test(n)) { o.material = o.material.clone(); EST.vallas.push(o.material); }
@@ -1454,6 +1539,21 @@ $('volumen').addEventListener('click', () => {
 });
 let avisoT = 0;
 function aviso(txt) { const a = $('aviso'); a.textContent = txt; a.classList.add('ver'); clearTimeout(avisoT); avisoT = setTimeout(() => a.classList.remove('ver'), 2600); }
+const ESTADIOS = {
+  bernabeu: { nombre: 'Santiago Bernabéu', archivos: ['santiago_bernabeu.glb', 'bernabeu.glb', 'Bernabeu.glb', 'estadio.glb'] },
+  campnou: { nombre: 'Camp Nou', archivos: ['camp_nou.glb', 'campnou.glb', 'Camp_Nou.glb'] },
+};
+let estadioActual = 'bernabeu';
+async function cambiarEstadio(id) {
+  if (id === estadioActual && EST.grupo) return true;
+  const d = await descargar(ESTADIOS[id].archivos);
+  if (!d) return false;
+  montarEstadio(await parsear(d.buffer));
+  await llenarGradas();
+  estadioActual = id; dibujarPantalla(1);
+  renderer.compile(scene, camera);
+  return true;
+}
 let JUEGO = null, tJuego = 0, cuadros = 0;
 const SIN_DIBUJO = PARAMS.has('sindibujo');   // solo para probar la lógica del partido deprisa
 async function abrirPartido() {
@@ -1471,15 +1571,18 @@ async function abrirPartido() {
   Object.assign(foco.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 160 }); foco.shadow.camera.updateProjectionMatrix();
   aviso('Preparando a los jugadores…');
   try {
+    if (PARAMS.get('estadio') && ESTADIOS[PARAMS.get('estadio')]) await cambiarEstadio(PARAMS.get('estadio'));
     const { crearPartido } = await import('./partido.js');
     JUEGO = await crearPartido({
+      ESTADIOS, cambiarEstadio, estadio: () => estadioActual,
       scene, camera, renderer, EST, MAN, sonido, U, U_ESCALA, foco, MOVIL, PARAMS, descargar, parsear, ajustarFov, apuntar,
       cohete, confeti: (c, n) => CONFETI.soltar(c, n),
       estela: (p, v) => { for (let k = 0; k < 3; k++) { _v.set(-v.x * 0.05 + (Math.random() - 0.5), -v.y * 0.05 + Math.random() * 0.6, -v.z * 0.05 + (Math.random() - 0.5)); FUEGO.emitir(p, _v, { c0: [2.6, 1.8, 0.6], c1: [1.2, 0.2, 0.02], dur: 0.45, tam: 0.55, crece: 1.4, alfa: 0.8 }); } },
       destello: (op) => { const f = $('flash'); f.style.transition = 'none'; f.style.opacity = String(op); void f.offsetWidth; f.style.transition = 'opacity .7s'; f.style.opacity = '0'; },
       alSalir: () => {
         JUEGO = null; TUNEL.visible = true; Object.assign(foco.shadow.camera, sombra); foco.shadow.camera.updateProjectionMatrix();
-        modo = 'portada'; empezar(0);
+        const volver = () => { modo = 'portada'; empezar(0); };
+        if (estadioActual !== 'bernabeu') { aviso('Volviendo al Bernabéu…'); cambiarEstadio('bernabeu').then(volver); } else volver();
       },
     });
     $('aviso').classList.remove('ver');
